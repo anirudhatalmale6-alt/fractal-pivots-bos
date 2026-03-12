@@ -267,15 +267,19 @@ f_ltfDetect() =>
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // === MAJOR YAPI TESPITI — tum MSS (trend donusu) sinyallerini cikart ===
+    // === MAJOR YAPI TESPITI — cooldown ile stabilize MSS tespiti ===
     var string mDir = ""
     var float mHH = na
     var float mLL = na
     var bool mHBr = false
     var bool mLBr = false
+    var int mDirBar = 0  // son yon degisimi bari — cooldown icin
     // MSS (trend donusu) sinyalleri — devam BOS sayilmaz
     mBullMSS = false
     mBearMSS = false
+    // Cooldown: en az 10 bar (10 dk @ 1M) arasinda yon degisimi
+    // Kucuk salinimlarin MSS olarak sayilmasini onler
+    mCooldownOK = bar_index - mDirBar >= 10
     // Ilk major seviyeleri fractal pivotlardan al
     if mDir == ""
         if not na(fracH) and na(mHH)
@@ -284,12 +288,14 @@ f_ltfDetect() =>
             mLL := fracL
         if not na(mHH) and high > mHH
             mDir := "Long"
+            mDirBar := bar_index
             mHBr := true
             if not na(fracL)
                 mLL := fracL
             mLBr := false
         if mDir == "" and not na(mLL) and low < mLL
             mDir := "Short"
+            mDirBar := bar_index
             mLBr := true
             if not na(fracH)
                 mHH := fracH
@@ -313,10 +319,11 @@ f_ltfDetect() =>
             if ltfBull and not na(fracL)
                 mLL := fracL
                 mLBr := false
-        if not mLBr and not na(mLL) and low < mLL
-            // Long → Short = Bearish MSS
+        if not mLBr and not na(mLL) and low < mLL and mCooldownOK
+            // Long → Short = Bearish MSS (cooldown gecti)
             mDir := "Short"
             mBearMSS := true
+            mDirBar := bar_index
             mLBr := true
             if not na(fracH)
                 mHH := fracH
@@ -331,7 +338,7 @@ f_ltfDetect() =>
             if ltfBull and not na(fracL) and fracL < mLL
                 mLL := fracL
         if not mLBr and low < mLL
-            // LL devam
+            // LL devam (her zaman izin ver — cooldown sadece yon degisimi icin)
             mLBr := true
             if not na(fracH)
                 mHH := fracH
@@ -340,10 +347,11 @@ f_ltfDetect() =>
             if ltfBear and not na(fracH)
                 mHH := fracH
                 mHBr := false
-        if not mHBr and not na(mHH) and high > mHH
-            // Short → Long = Bullish MSS
+        if not mHBr and not na(mHH) and high > mHH and mCooldownOK
+            // Short → Long = Bullish MSS (cooldown gecti)
             mDir := "Long"
             mBullMSS := true
+            mDirBar := bar_index
             mHBr := true
             if not na(fracL)
                 mLL := fracL
