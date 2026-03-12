@@ -202,160 +202,108 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu (Fractal Pivot tabanli — ana indikatörle ayni mantik)
+// => LTF Likidite Tespit Fonksiyonu (ta.pivothigh/ta.pivotlow tabanli — onaylanmis pivot seviyeleri)
+// v34: Tek-bar fractal pivot yerine N-bar onaylanmis pivotlar kullaniliyor
+// Bu sayede kucuk salinimlari filtreler ve sadece anlamli yapisal degisiklikleri yakalar
 f_ltfDetect() =>
-    // Fractal Pivot yapisi (ana indikatörle ayni algoritma)
-    var string ltfCond = ""
-    var float ltfCH = na
-    var float ltfCL = na
-    var float swH = na
-    var float swL = na
-    ltfBull = false
-    ltfBear = false
-    if ltfCond == ""
-        ltfCH := high
-        ltfCL := low
-        ltfCond := "First"
-    if ltfCond == "First" and barstate.isconfirmed
-        if high > ltfCH and close >= open
-            ltfCond := "Bullish"
-            ltfBull := true
-        if low < ltfCL and close < open
-            ltfCond := "Bearish"
-            ltfBear := true
-    if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close >= open
-                ltfCond := "Bearish"
-                ltfBear := true
-            else
-                ltfCH := high
-                ltfCL := low
-                ltfCond := "Bearish"
-                ltfBear := true
-        else if low < ltfCL
-            ltfCond := "Bearish"
-            ltfBear := true
-        else if high > ltfCH
-            ltfCH := high
-            ltfCL := low
-    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close >= open
-                ltfCH := high
-                ltfCL := low
-                ltfCond := "Bullish"
-                ltfBull := true
-            else
-                ltfCond := "Bullish"
-                ltfBull := true
-        else if high > ltfCH
-            ltfCond := "Bullish"
-            ltfBull := true
-        else if low < ltfCL
-            ltfCH := high
-            ltfCL := low
-    // Fractal pivot seviyeleri (swing high/low) — reset oncesi yakala
-    var float fracH = na
-    var float fracL = na
-    if ltfBear
-        fracH := ltfCH
-        swH := ltfCH
-    if ltfBull
-        fracL := ltfCL
-        swL := ltfCL
-    if ltfBull or ltfBear
-        ltfCH := high
-        ltfCL := low
-    // === MAJOR YAPI TESPITI — cooldown ile stabilize MSS tespiti ===
+    // N-bar onaylanmis pivotlar — her iki tarafta N bar gerektir
+    // N=5: 1M'de 5 dakika oncesi + 5 dakika sonrasi = anlamli swing noktasi
+    N = 5
+    pH = ta.pivothigh(high, N, N)
+    pL = ta.pivotlow(low, N, N)
+    // Son onaylanmis pivot seviyeleri
+    var float lastPH = na
+    var float lastPL = na
+    if not na(pH)
+        lastPH := pH
+    if not na(pL)
+        lastPL := pL
+    // === MAJOR YAPI — onaylanmis pivot seviyeleri uzerinden HH/HL/LH/LL takibi ===
     var string mDir = ""
-    var float mHH = na
-    var float mLL = na
-    var bool mHBr = false
-    var bool mLBr = false
-    var int mDirBar = 0  // son yon degisimi bari — cooldown icin
-    // MSS (trend donusu) sinyalleri — devam BOS sayilmaz
+    var float mSwingH = na  // Kirilacak major high seviyesi
+    var float mSwingL = na  // Kirilacak major low seviyesi
+    var bool mHBroken = false  // High kirildi, yeni onaylanmis pivot bekliyor
+    var bool mLBroken = false  // Low kirildi, yeni onaylanmis pivot bekliyor
     mBullMSS = false
     mBearMSS = false
-    // Cooldown: en az 10 bar (10 dk @ 1M) arasinda yon degisimi
-    // Kucuk salinimlarin MSS olarak sayilmasini onler
-    mCooldownOK = bar_index - mDirBar >= 10
-    // Ilk major seviyeleri fractal pivotlardan al
+    // Ilk yon belirleme
     if mDir == ""
-        if not na(fracH) and na(mHH)
-            mHH := fracH
-        if not na(fracL) and na(mLL)
-            mLL := fracL
-        if not na(mHH) and high > mHH
+        if not na(lastPH) and na(mSwingH)
+            mSwingH := lastPH
+        if not na(lastPL) and na(mSwingL)
+            mSwingL := lastPL
+        if not na(mSwingH) and high > mSwingH
             mDir := "Long"
-            mDirBar := bar_index
-            mHBr := true
-            if not na(fracL)
-                mLL := fracL
-            mLBr := false
-        if mDir == "" and not na(mLL) and low < mLL
+            mHBroken := true
+            if not na(lastPL)
+                mSwingL := lastPL
+            mLBroken := false
+        if mDir == "" and not na(mSwingL) and low < mSwingL
             mDir := "Short"
-            mDirBar := bar_index
-            mLBr := true
-            if not na(fracH)
-                mHH := fracH
-            mHBr := false
-    // Long trend: HH devam, LL kirilimi = trend donusu (MSS)
+            mLBroken := true
+            if not na(lastPH)
+                mSwingH := lastPH
+            mHBroken := false
+    // Long trend: HH devam, LL kirilimi = Bear MSS
     if mDir == "Long"
-        if mHBr
-            if ltfBear and not na(fracH)
-                mHH := fracH
-                mHBr := false
+        // HH kirilmis — yeni onaylanmis pivot high bekle
+        if mHBroken
+            if not na(pH)
+                mSwingH := pH
+                mHBroken := false
         else
-            if ltfBear and not na(fracH) and fracH > mHH
-                mHH := fracH
-        if not mHBr and high > mHH
-            // HH devam
-            mHBr := true
-            if not na(fracL)
-                mLL := fracL
-            mLBr := false
-        if mLBr
-            if ltfBull and not na(fracL)
-                mLL := fracL
-                mLBr := false
-        if not mLBr and not na(mLL) and low < mLL and mCooldownOK
-            // Long → Short = Bearish MSS (cooldown gecti)
+            // Daha yuksek pivot high varsa guncelle
+            if not na(pH) and pH > mSwingH
+                mSwingH := pH
+        // HH kirilimi (devam)
+        if not mHBroken and high > mSwingH
+            mHBroken := true
+            if not na(lastPL)
+                mSwingL := lastPL
+            mLBroken := false
+        // LL kirilmis — yeni onaylanmis pivot low bekle
+        if mLBroken
+            if not na(pL)
+                mSwingL := pL
+                mLBroken := false
+        // LL kirilimi = Bear MSS!
+        if not mLBroken and not na(mSwingL) and low < mSwingL
             mDir := "Short"
             mBearMSS := true
-            mDirBar := bar_index
-            mLBr := true
-            if not na(fracH)
-                mHH := fracH
-            mHBr := false
-    // Short trend: LL devam, HH kirilimi = trend donusu (MSS)
+            mLBroken := true
+            if not na(lastPH)
+                mSwingH := lastPH
+            mHBroken := false
+    // Short trend: LL devam, HH kirilimi = Bull MSS
     if mDir == "Short"
-        if mLBr
-            if ltfBull and not na(fracL)
-                mLL := fracL
-                mLBr := false
+        // LL kirilmis — yeni onaylanmis pivot low bekle
+        if mLBroken
+            if not na(pL)
+                mSwingL := pL
+                mLBroken := false
         else
-            if ltfBull and not na(fracL) and fracL < mLL
-                mLL := fracL
-        if not mLBr and low < mLL
-            // LL devam (her zaman izin ver — cooldown sadece yon degisimi icin)
-            mLBr := true
-            if not na(fracH)
-                mHH := fracH
-            mHBr := false
-        if mHBr
-            if ltfBear and not na(fracH)
-                mHH := fracH
-                mHBr := false
-        if not mHBr and not na(mHH) and high > mHH and mCooldownOK
-            // Short → Long = Bullish MSS (cooldown gecti)
+            // Daha dusuk pivot low varsa guncelle
+            if not na(pL) and pL < mSwingL
+                mSwingL := pL
+        // LL kirilimi (devam)
+        if not mLBroken and low < mSwingL
+            mLBroken := true
+            if not na(lastPH)
+                mSwingH := lastPH
+            mHBroken := false
+        // HH kirilmis — yeni onaylanmis pivot high bekle
+        if mHBroken
+            if not na(pH)
+                mSwingH := pH
+                mHBroken := false
+        // HH kirilimi = Bull MSS!
+        if not mHBroken and not na(mSwingH) and high > mSwingH
             mDir := "Long"
             mBullMSS := true
-            mDirBar := bar_index
-            mHBr := true
-            if not na(fracL)
-                mLL := fracL
-            mLBr := false
+            mHBroken := true
+            if not na(lastPL)
+                mSwingL := lastPL
+            mLBroken := false
     // Sadece MSS sinyallerini say
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
