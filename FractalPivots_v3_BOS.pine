@@ -224,26 +224,20 @@ f_ltfDetect() =>
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close < open
+        if low < ltfCL
+            if high > ltfCH
                 ltfCH := high
                 ltfCL := low
-            ltfCond := "Bearish"
-            ltfBear := true
-        else if low < ltfCL
             ltfCond := "Bearish"
             ltfBear := true
         else if high > ltfCH
             ltfCH := high
             ltfCL := low
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close >= open
+        if high > ltfCH
+            if low < ltfCL
                 ltfCH := high
                 ltfCL := low
-            ltfCond := "Bullish"
-            ltfBull := true
-        else if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
         else if low < ltfCL
@@ -446,24 +440,17 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
 
 // Bullish
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    // Outside bar — hem H hem L kirildi
-    if high > strCandleHigh and low < strCandleLow
-        // Mum rengi ne olursa olsun → tek reversal (cift pivot yok)
-        if close < open
-            // Kirmizi outside bar → range guncelle + reversal
+    if low < strCandleLow
+        // Reversal — outside bar ise range guncelle
+        if high > strCandleHigh
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
-        // Yesil outside bar → range guncellemeden reversal (orjinal mantik)
         strCond         := "Bearish"
         strBearish      := true
-    // Sadece low kirildi → reversal
-    else if low < strCandleLow
-        strCond         := "Bearish"
-        strBearish      := true
-    // Sadece high kirildi → devam
     else if high > strCandleHigh
+        // Devam — yeni HH
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
@@ -472,24 +459,17 @@ if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
 
 // Bearish
 if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    // Outside bar — hem H hem L kirildi
-    if high > strCandleHigh and low < strCandleLow
-        // Mum rengi ne olursa olsun → tek reversal (cift pivot yok)
-        if close >= open
-            // Yesil outside bar → range guncelle + reversal
+    if high > strCandleHigh
+        // Reversal — outside bar ise range guncelle
+        if low < strCandleLow
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
-        // Kirmizi outside bar → range guncellemeden reversal (orjinal mantik)
         strCond         := "Bullish"
         strBullish      := true
-    // Sadece high kirildi → reversal
-    else if high > strCandleHigh
-        strCond         := "Bullish"
-        strBullish      := true
-    // Sadece low kirildi → devam
     else if low < strCandleLow
+        // Devam — yeni LL
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
