@@ -401,7 +401,8 @@ if ltfBullSignal
     ltfBullPrecursor := true
     ltfBullPrecursorBar := bar_index
     // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar <= 15
+    // Minimum 2 bar aralik — ayni barda veya hemen sonrasinda olan gurultu degil
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 2 and bar_index - ltfBearPrecursorBar <= 15
         ltfBullReady := true
         ltfBullReadyBar := bar_index
         ltfBearPrecursor := false
@@ -410,7 +411,8 @@ if ltfBearSignal
     ltfBearPrecursor := true
     ltfBearPrecursorBar := bar_index
     // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar <= 15
+    // Minimum 2 bar aralik — ayni barda veya hemen sonrasinda olan gurultu degil
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 2 and bar_index - ltfBullPrecursorBar <= 15
         ltfBearReady := true
         ltfBearReadyBar := bar_index
         ltfBullPrecursor := false
