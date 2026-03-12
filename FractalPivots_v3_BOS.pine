@@ -418,11 +418,12 @@ if ltfBearSignal
         ltfBearReady := true
         ltfBearReadyBar := bar_index
         ltfBullPrecursor := false
-// Zaman asimi — sadece kaliteli hazir bayraklari (15 HTF bar)
+// Zaman asimi — kaliteli hazir bayraklari (50 HTF bar = ~4 saat @ 5M)
+// Uzun sureli hareketlerde 1M MSS ile 5M BOS arasi cok fark olabiliyor
 // Onculer zaman asimina tabi DEGIL — HTF trend degisiminde sifirlanir
-if ltfBullReady and bar_index - ltfBullReadyBar > 15
+if ltfBullReady and bar_index - ltfBullReadyBar > 50
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 15
+if ltfBearReady and bar_index - ltfBearReadyBar > 50
     ltfBearReady := false
 
 // BOS Sayaclari
