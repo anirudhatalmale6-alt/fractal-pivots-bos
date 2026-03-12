@@ -728,12 +728,10 @@ if mjDir == "Long"
 // Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
 qualityBOSDetected = false
 
-// MSS: Trend donusu — sayaclari ve LTF bayraklarini sifirla
+// MSS: Trend donusu — sayaclari sifirla (LTF bayraklari KALSIN, ilk devam BOS icin kullanilacak)
 if mjLong or mjShort
     rawBOSCount     := 0
     qualityBOSCount := 0
-    ltfBullReady    := false
-    ltfBearReady    := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
