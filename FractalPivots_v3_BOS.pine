@@ -204,31 +204,42 @@ f_zigzagmaj(_mjarr) =>
 
 // => LTF Likidite Tespit Fonksiyonu
 f_ltfDetect() =>
-    ph = ta.pivothigh(high, 3, 3)
-    pl = ta.pivotlow(low, 3, 3)
+    // Daha guvenilir swing tespiti icin lookback 5
+    ph = ta.pivothigh(high, 5, 5)
+    pl = ta.pivotlow(low, 5, 5)
     var float swH = na
     var float swL = na
+    var int swHBar = 0
+    var int swLBar = 0
     if not na(ph)
         swH := ph
+        swHBar := bar_index - 5
     if not na(pl)
         swL := pl
+        swLBar := bar_index - 5
     // Likidite surme: mum swing seviyesinin altina/ustune wick atar ama geri kapanir
-    bullSweep = not na(swL) and low < swL and close > swL
-    bearSweep = not na(swH) and high > swH and close < swH
+    // Swing en az 3 bar once olusmus olmali (taze swing degil)
+    bullSweep = not na(swL) and (bar_index - swLBar) >= 3 and low < swL and close > swL
+    bearSweep = not na(swH) and (bar_index - swHBar) >= 3 and high > swH and close < swH
     // Bekleyen likidite surmeleri
     var bool bullLiqPending = false
     var bool bearLiqPending = false
     var int bullSweepBar = 0
     var int bearSweepBar = 0
+    var float bullSweepSwH = na
+    var float bearSweepSwL = na
     if bullSweep
         bullLiqPending := true
         bullSweepBar := bar_index
+        bullSweepSwH := swH  // Kirilmasi gereken seviye
     if bearSweep
         bearLiqPending := true
         bearSweepBar := bar_index
+        bearSweepSwL := swL  // Kirilmasi gereken seviye
     // LTF BOS: likidite aldiktan sonra yapiyi kirar
-    bullLiqBOS = bullLiqPending and not na(swH) and close > swH
-    bearLiqBOS = bearLiqPending and not na(swL) and close < swL
+    // Sweep anindaki swing high/low seviyesini kullan (guncel degil)
+    bullLiqBOS = bullLiqPending and not na(bullSweepSwH) and close > bullSweepSwH and (bar_index - bullSweepBar) >= 1
+    bearLiqBOS = bearLiqPending and not na(bearSweepSwL) and close < bearSweepSwL and (bar_index - bearSweepBar) >= 1
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
     if bullLiqBOS
@@ -239,21 +250,24 @@ f_ltfDetect() =>
         bearSignalCnt += 1
         bearLiqPending := false
         bullLiqPending := false
-    // Zaman asimi (50 LTF bar)
-    if bullLiqPending and bar_index - bullSweepBar > 50
+    // Zaman asimi (30 LTF bar)
+    if bullLiqPending and bar_index - bullSweepBar > 30
         bullLiqPending := false
-    if bearLiqPending and bar_index - bearSweepBar > 50
+    if bearLiqPending and bar_index - bearSweepBar > 30
         bearLiqPending := false
     [bullSignalCnt, bearSignalCnt]
 
 // => LTF Zaman Dilimi Eslestirmesi
 lowerTF = switch timeframe.period
-    "1"  => "15S"
-    "5"  => "1"
-    "15" => "5"
-    "60" => "15"
+    "5S"  => "1S"
+    "15S" => "5S"
+    "30S" => "15S"
+    "1"   => "15S"
+    "5"   => "1"
+    "15"  => "5"
+    "60"  => "15"
     => timeframe.period
-supportedTF = (timeframe.period == "1" or timeframe.period == "5" or timeframe.period == "15" or timeframe.period == "60")
+supportedTF = (timeframe.period == "5S" or timeframe.period == "15S" or timeframe.period == "30S" or timeframe.period == "1" or timeframe.period == "5" or timeframe.period == "15" or timeframe.period == "60")
 
 // => LTF Sinyal Alma (request.security)
 [ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
@@ -277,10 +291,10 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi (100 HTF bar)
-if ltfBullReady and bar_index - ltfBullReadyBar > 100
+// Zaman asimi (20 HTF bar — LTF sinyal HTF BOS'a yakin olmali)
+if ltfBullReady and bar_index - ltfBullReadyBar > 20
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 100
+if ltfBearReady and bar_index - ltfBearReadyBar > 20
     ltfBearReady := false
 
 // BOS Sayaclari
@@ -720,10 +734,12 @@ if mjDir == "Long"
 // Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
 qualityBOSDetected = false
 
-// MSS: Trend donusu — sayaclari sifirla
+// MSS: Trend donusu — sayaclari ve LTF bayraklarini sifirla
 if mjLong or mjShort
     rawBOSCount     := 0
     qualityBOSCount := 0
+    ltfBullReady    := false
+    ltfBearReady    := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
