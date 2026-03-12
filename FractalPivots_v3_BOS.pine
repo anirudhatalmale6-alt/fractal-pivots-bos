@@ -255,38 +255,103 @@ f_ltfDetect() =>
         else if low < ltfCL
             ltfCH := high
             ltfCL := low
-    // Swing seviyeleri guncelle
+    // Fractal pivot seviyeleri (swing high/low) — reset oncesi yakala
+    var float fracH = na
+    var float fracL = na
+    if ltfBear
+        fracH := ltfCH
+    if ltfBull
+        fracL := ltfCL
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // IKI ADIMLI SIRA: likidite (ters yon) + BOS (trend yonu)
-    // Bearish kalite: ltfBull (ralli = buy-side likidite) → ltfBear (dusus = BOS)
-    // Bullish kalite: ltfBear (dusus = sell-side likidite) → ltfBull (ralli = BOS)
-    var bool sellSideLiqPending = false   // ltfBear goruldu, bullish BOS bekliyor
-    var bool buySideLiqPending = false    // ltfBull goruldu, bearish BOS bekliyor
-    var int sellSideBar = 0
-    var int buySideBar = 0
+    // === MAJOR YAPI TESPITI (ana indikatörün turuncu zigzag mantigi) ===
+    var string mDir = ""
+    var float mHH = na
+    var float mLL = na
+    var bool mHBr = false
+    var bool mLBr = false
+    mBullBOS = false
+    mBearBOS = false
+    // Ilk major seviyeleri fractal pivotlardan al
+    if mDir == ""
+        if not na(fracH) and na(mHH)
+            mHH := fracH
+        if not na(fracL) and na(mLL)
+            mLL := fracL
+        if not na(mHH) and high > mHH
+            mDir := "Long"
+            mBullBOS := true
+            mHBr := true
+            if not na(fracL)
+                mLL := fracL
+            mLBr := false
+        if mDir == "" and not na(mLL) and low < mLL
+            mDir := "Short"
+            mBearBOS := true
+            mLBr := true
+            if not na(fracH)
+                mHH := fracH
+            mHBr := false
+    // Long trend: HH devam, LL kirilimi = trend donusu
+    if mDir == "Long"
+        if mHBr
+            if ltfBear and not na(fracH)
+                mHH := fracH
+                mHBr := false
+        else
+            if ltfBear and not na(fracH) and fracH > mHH
+                mHH := fracH
+        if not mHBr and high > mHH
+            mBullBOS := true
+            mHBr := true
+            if not na(fracL)
+                mLL := fracL
+            mLBr := false
+        if mLBr
+            if ltfBull and not na(fracL)
+                mLL := fracL
+                mLBr := false
+        if not mLBr and not na(mLL) and low < mLL
+            mDir := "Short"
+            mBearBOS := true
+            mLBr := true
+            if not na(fracH)
+                mHH := fracH
+            mHBr := false
+    // Short trend: LL devam, HH kirilimi = trend donusu
+    if mDir == "Short"
+        if mLBr
+            if ltfBull and not na(fracL)
+                mLL := fracL
+                mLBr := false
+        else
+            if ltfBull and not na(fracL) and fracL < mLL
+                mLL := fracL
+        if not mLBr and low < mLL
+            mBearBOS := true
+            mLBr := true
+            if not na(fracH)
+                mHH := fracH
+            mHBr := false
+        if mHBr
+            if ltfBear and not na(fracH)
+                mHH := fracH
+                mHBr := false
+        if not mHBr and not na(mHH) and high > mHH
+            mDir := "Long"
+            mBullBOS := true
+            mHBr := true
+            if not na(fracL)
+                mLL := fracL
+            mLBr := false
+    // Major BOS sinyalleri say
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
-    if ltfBear
-        sellSideLiqPending := true
-        sellSideBar := bar_index
-        // Eger buySideLiq bekleniyorsa → bearish BOS tamamlandi
-        if buySideLiqPending
-            bearSignalCnt += 1
-            buySideLiqPending := false
-    if ltfBull
-        buySideLiqPending := true
-        buySideBar := bar_index
-        // Eger sellSideLiq bekleniyorsa → bullish BOS tamamlandi
-        if sellSideLiqPending
-            bullSignalCnt += 1
-            sellSideLiqPending := false
-    // Zaman asimi (80 LTF bar)
-    if sellSideLiqPending and bar_index - sellSideBar > 80
-        sellSideLiqPending := false
-    if buySideLiqPending and bar_index - buySideBar > 80
-        buySideLiqPending := false
+    if mBullBOS
+        bullSignalCnt += 1
+    if mBearBOS
+        bearSignalCnt += 1
     [bullSignalCnt, bearSignalCnt]
 
 // => LTF Zaman Dilimi Eslestirmesi
@@ -326,10 +391,10 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi (10 HTF bar — LTF sinyal HTF BOS'a cok yakin olmali)
-if ltfBullReady and bar_index - ltfBullReadyBar > 10
+// Zaman asimi (20 HTF bar — major LTF BOS HTF'ye yakin olmali)
+if ltfBullReady and bar_index - ltfBullReadyBar > 20
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 10
+if ltfBearReady and bar_index - ltfBearReadyBar > 20
     ltfBearReady := false
 
 // BOS Sayaclari
