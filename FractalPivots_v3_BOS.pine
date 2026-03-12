@@ -255,43 +255,18 @@ f_ltfDetect() =>
         else if low < ltfCL
             ltfCH := high
             ltfCL := low
-    // Swing seviyeleri guncelle (fractal pivot gibi)
-    if ltfBear
-        swH := ltfCH    // yukselen mumun high'i swing high olur
-    if ltfBull
-        swL := ltfCL    // dusen mumun low'u swing low olur
+    // Swing seviyeleri guncelle
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // Likidite surme tespiti
-    bullSweep = not na(swL) and low <= swL
-    bearSweep = not na(swH) and high >= swH
-    var bool bullLiqPending = false
-    var bool bearLiqPending = false
-    var int bullSweepBar = 0
-    var int bearSweepBar = 0
-    if bullSweep
-        bullLiqPending := true
-        bullSweepBar := bar_index
-    if bearSweep
-        bearLiqPending := true
-        bearSweepBar := bar_index
-    // LTF BOS: likidite sonrasi yapi kirimi (fractal degisimi)
-    bullLiqBOS = bullLiqPending and ltfBull
-    bearLiqBOS = bearLiqPending and ltfBear
+    // Fractal degisimi = likidite + BOS (yapi kirimi destek/direnci kirar = likidite alinir)
+    // Ayri sweep kontrolune gerek yok — fractal break kendisi likidite olayidir
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
-    if bullLiqBOS
+    if ltfBull
         bullSignalCnt += 1
-        bullLiqPending := false
-    if bearLiqBOS
+    if ltfBear
         bearSignalCnt += 1
-        bearLiqPending := false
-    // Zaman asimi (80 LTF bar)
-    if bullLiqPending and bar_index - bullSweepBar > 80
-        bullLiqPending := false
-    if bearLiqPending and bar_index - bearSweepBar > 80
-        bearLiqPending := false
     [bullSignalCnt, bearSignalCnt]
 
 // => LTF Zaman Dilimi Eslestirmesi
