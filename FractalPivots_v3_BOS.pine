@@ -267,19 +267,15 @@ f_ltfDetect() =>
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // === MAJOR YAPI TESPITI — sadece MSS (trend donusu) say ===
+    // === MAJOR YAPI TESPITI — tum MSS (trend donusu) sinyallerini cikart ===
     var string mDir = ""
     var float mHH = na
     var float mLL = na
     var bool mHBr = false
     var bool mLBr = false
-    var int mPivotCount = 0  // minör pivot sayaci — trend olgunlugu icin
-    // Sadece MSS (trend donusu) sinyalleri — devam BOS sayilmaz
+    // MSS (trend donusu) sinyalleri — devam BOS sayilmaz
     mBullMSS = false
     mBearMSS = false
-    // Minör pivot sayacini guncelle (her minor yapisal degisimde artir)
-    if (ltfBull or ltfBear) and mDir != ""
-        mPivotCount += 1
     // Ilk major seviyeleri fractal pivotlardan al
     if mDir == ""
         if not na(fracH) and na(mHH)
@@ -289,14 +285,12 @@ f_ltfDetect() =>
         if not na(mHH) and high > mHH
             mDir := "Long"
             mHBr := true
-            mPivotCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
         if mDir == "" and not na(mLL) and low < mLL
             mDir := "Short"
             mLBr := true
-            mPivotCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -320,12 +314,10 @@ f_ltfDetect() =>
                 mLL := fracL
                 mLBr := false
         if not mLBr and not na(mLL) and low < mLL
-            // Long → Short: en az 2 minör pivot olmussa = olgun trend, MSS say
+            // Long → Short = Bearish MSS
             mDir := "Short"
-            if mPivotCount >= 2
-                mBearMSS := true
+            mBearMSS := true
             mLBr := true
-            mPivotCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -349,12 +341,10 @@ f_ltfDetect() =>
                 mHH := fracH
                 mHBr := false
         if not mHBr and not na(mHH) and high > mHH
-            // Short → Long: en az 2 minör pivot olmussa = olgun trend, MSS say
+            // Short → Long = Bullish MSS
             mDir := "Long"
-            if mPivotCount >= 2
-                mBullMSS := true
+            mBullMSS := true
             mHBr := true
-            mPivotCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
@@ -393,22 +383,46 @@ if not na(ltfBullCnt)
 if not na(ltfBearCnt)
     prevLtfBearCnt := ltfBearCnt
 
-// LTF sinyal bayraklari
+// LTF sinyal bayraklari — iki asamali: likidite oncusu + MSS
+// Kaliteli BOS icin 1M'de: once likidite alinir (ters yone MSS), sonra kirilim gelir (geri MSS)
+// Ornek bearish kaliteli: once Bull MSS (likidite yukari), sonra Bear MSS (kirilim asagi)
 var bool ltfBullReady = false
 var bool ltfBearReady = false
 var int ltfBullReadyBar = 0
 var int ltfBearReadyBar = 0
+// Likidite oncusu bayraklari
+var bool ltfBullPrecursor = false  // Bull MSS oldu (bearish kaliteli icin likidite oncusu)
+var bool ltfBearPrecursor = false  // Bear MSS oldu (bullish kaliteli icin likidite oncusu)
+var int ltfBullPrecursorBar = 0
+var int ltfBearPrecursorBar = 0
+
 if ltfBullSignal
-    ltfBullReady := true
-    ltfBullReadyBar := bar_index
+    // Bull MSS = likidite yukari alindi (bearish kaliteli icin oncu)
+    ltfBullPrecursor := true
+    ltfBullPrecursorBar := bar_index
+    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar <= 15
+        ltfBullReady := true
+        ltfBullReadyBar := bar_index
+        ltfBearPrecursor := false
 if ltfBearSignal
-    ltfBearReady := true
-    ltfBearReadyBar := bar_index
-// Zaman asimi (10 HTF bar — LTF sinyali HTF BOS'a yakin olmali)
-if ltfBullReady and bar_index - ltfBullReadyBar > 10
+    // Bear MSS = likidite asagi alindi (bullish kaliteli icin oncu)
+    ltfBearPrecursor := true
+    ltfBearPrecursorBar := bar_index
+    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar <= 15
+        ltfBearReady := true
+        ltfBearReadyBar := bar_index
+        ltfBullPrecursor := false
+// Zaman asimi (15 HTF bar)
+if ltfBullReady and bar_index - ltfBullReadyBar > 15
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 10
+if ltfBearReady and bar_index - ltfBearReadyBar > 15
     ltfBearReady := false
+if ltfBullPrecursor and bar_index - ltfBullPrecursorBar > 15
+    ltfBullPrecursor := false
+if ltfBearPrecursor and bar_index - ltfBearPrecursorBar > 15
+    ltfBearPrecursor := false
 
 // BOS Sayaclari
 var int rawBOSCount     = 0
@@ -865,6 +879,8 @@ if mjLong or mjShort
     qualityBOSCount := 0
     ltfBullReady    := false
     ltfBearReady    := false
+    ltfBullPrecursor := false
+    ltfBearPrecursor := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
