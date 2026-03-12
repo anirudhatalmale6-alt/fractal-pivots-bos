@@ -273,6 +273,7 @@ f_ltfDetect() =>
     var float mLL = na
     var bool mHBr = false
     var bool mLBr = false
+    var int mContCount = 0  // devam sayaci — likidite alinimi dogrulamak icin
     // Sadece MSS (trend donusu) sinyalleri — devam BOS sayilmaz
     mBullMSS = false
     mBearMSS = false
@@ -285,12 +286,14 @@ f_ltfDetect() =>
         if not na(mHH) and high > mHH
             mDir := "Long"
             mHBr := true
+            mContCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
         if mDir == "" and not na(mLL) and low < mLL
             mDir := "Short"
             mLBr := true
+            mContCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -304,8 +307,9 @@ f_ltfDetect() =>
             if ltfBear and not na(fracH) and fracH > mHH
                 mHH := fracH
         if not mHBr and high > mHH
-            // HH devam — MSS degil, sayma
+            // HH devam — likidite alimi (sayaci artir)
             mHBr := true
+            mContCount += 1
             if not na(fracL)
                 mLL := fracL
             mLBr := false
@@ -314,10 +318,12 @@ f_ltfDetect() =>
                 mLL := fracL
                 mLBr := false
         if not mLBr and not na(mLL) and low < mLL
-            // Long → Short = Bearish MSS (likidite alip kirilim)
+            // Long → Short: sadece likidite alinmissa (en az 1 HH devam) MSS say
             mDir := "Short"
-            mBearMSS := true
+            if mContCount >= 1
+                mBearMSS := true
             mLBr := true
+            mContCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -331,8 +337,9 @@ f_ltfDetect() =>
             if ltfBull and not na(fracL) and fracL < mLL
                 mLL := fracL
         if not mLBr and low < mLL
-            // LL devam — MSS degil, sayma
+            // LL devam — likidite alimi (sayaci artir)
             mLBr := true
+            mContCount += 1
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -341,10 +348,12 @@ f_ltfDetect() =>
                 mHH := fracH
                 mHBr := false
         if not mHBr and not na(mHH) and high > mHH
-            // Short → Long = Bullish MSS (likidite alip kirilim)
+            // Short → Long: sadece likidite alinmissa (en az 1 LL devam) MSS say
             mDir := "Long"
-            mBullMSS := true
+            if mContCount >= 1
+                mBullMSS := true
             mHBr := true
+            mContCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
