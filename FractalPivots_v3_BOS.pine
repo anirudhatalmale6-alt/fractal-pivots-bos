@@ -202,114 +202,266 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu (ta.pivothigh/ta.pivotlow tabanli — onaylanmis pivot seviyeleri)
-// v34: Tek-bar fractal pivot yerine N-bar onaylanmis pivotlar kullaniliyor
-// Bu sayede kucuk salinimlari filtreler ve sadece anlamli yapisal degisiklikleri yakalar
+// => LTF Likidite Tespit Fonksiyonu — ANA INDIKATÖR MANTIGI (v37)
+// 1M'de AYNI minor + major yapi tespiti calisir
+// Bu sayede 1M major kirilimlar (MSS) tam olarak eslestir
 f_ltfDetect() =>
-    // N-bar onaylanmis pivotlar — her iki tarafta N bar gerektir
-    // N=2: 1M'de 2 dakika oncesi + 2 dakika sonrasi = anlamli swing noktasi
-    N = 2
-    pH = ta.pivothigh(high, N, N)
-    pL = ta.pivotlow(low, N, N)
-    // Son onaylanmis pivot seviyeleri
-    var float lastPH = na
-    var float lastPL = na
-    if not na(pH)
-        lastPH := pH
-    if not na(pL)
-        lastPL := pL
-    // === MAJOR YAPI — onaylanmis pivot seviyeleri uzerinden HH/HL/LH/LL takibi ===
+    // --- MINOR STRUCTURE (ana indikatörle birebir ayni) ---
+    var string sc = ""
+    var float sCH = na
+    var float sCL = na
+    var int sCI = na
+    var int sSize = 0
+    // Son pivot takibi (array yerine degiskenler)
+    var string lpC = ""   // lastPivotCond
+    var float lpV = na    // lastPivotValue
+    var int lpI = na      // lastPivotIndex
+    var string ppC = ""   // prevPivotCond
+    var float ppV = na
+    var int ppI = na
+    sBull = false
+    sBull2 = false
+    sBear = false
+    sBear2 = false
+    if sc == ""
+        sCH := high
+        sCL := low
+        sCI := bar_index
+        sc := "First"
+    if sc == "First" and barstate.isconfirmed
+        if high > sCH and close >= open
+            sc := "Bullish"
+            sBull := true
+        if low < sCL and close < open
+            sc := "Bearish"
+            sBear := true
+    if sc == "Bullish" and sBull == false and barstate.isconfirmed
+        if high > sCH and low < sCL
+            if close >= open
+                sc := "Bearish"
+                sBear := true
+                sBear2 := true
+            else
+                sCH := high
+                sCL := low
+                sCI := bar_index
+                sc := "Bearish"
+                sBear := true
+        else if low < sCL
+            sc := "Bearish"
+            sBear := true
+        else if high > sCH
+            sCH := high
+            sCL := low
+            sCI := bar_index
+    if sc == "Bearish" and sBear == false and barstate.isconfirmed
+        if high > sCH and low < sCL
+            if close >= open
+                sCH := high
+                sCL := low
+                sCI := bar_index
+                sc := "Bullish"
+                sBull := true
+            else
+                sc := "Bullish"
+                sBull := true
+                sBull2 := true
+        else if high > sCH
+            sc := "Bullish"
+            sBull := true
+        else if low < sCL
+            sCH := high
+            sCL := low
+            sCI := bar_index
+    // Add Low Level (Bullish pivot)
+    if sBull
+        ppC := lpC
+        ppV := lpV
+        ppI := lpI
+        lpC := "Low"
+        lpV := sCL
+        lpI := sCI
+        sCH := high
+        sCL := low
+        sCI := bar_index
+        sSize += 1
+        if sBull2
+            sc := "Bearish"
+            ppC := lpC
+            ppV := lpV
+            ppI := lpI
+            lpC := "High"
+            lpV := sCH
+            lpI := sCI
+            sSize += 1
+    // Add High Level (Bearish pivot)
+    if sBear
+        ppC := lpC
+        ppV := lpV
+        ppI := lpI
+        lpC := "High"
+        lpV := sCH
+        lpI := sCI
+        sCH := high
+        sCL := low
+        sCI := bar_index
+        sSize += 1
+        if sBear2
+            sc := "Bullish"
+            ppC := lpC
+            ppV := lpV
+            ppI := lpI
+            lpC := "Low"
+            lpV := sCL
+            lpI := sCI
+            sSize += 1
+    // --- MAJOR STRUCTURE (ana indikatörle birebir ayni) ---
     var string mDir = ""
-    var float mSwingH = na  // Kirilacak major high seviyesi
-    var float mSwingL = na  // Kirilacak major low seviyesi
-    var bool mHBroken = false  // High kirildi, yeni onaylanmis pivot bekliyor
-    var bool mLBroken = false  // Low kirildi, yeni onaylanmis pivot bekliyor
-    mBullMSS = false
-    mBearMSS = false
+    var float mHV = na     // mjHHVal
+    var int mHI = na       // mjHHInd
+    var float mLV = na     // mjLLVal
+    var int mLI = na       // mjLLInd
+    var bool mHBr = false  // mjHighLineBr
+    var bool mLBr = false  // mjLowLineBr
+    var int mHBrI = na     // mjHighLineBrInd
+    var int mLBrI = na     // mjLowLineBrInd
+    mLong = false
+    mShort = false
     // Ilk yon belirleme
-    if mDir == ""
-        if not na(lastPH) and na(mSwingH)
-            mSwingH := lastPH
-        if not na(lastPL) and na(mSwingL)
-            mSwingL := lastPL
-        if not na(mSwingH) and high > mSwingH
+    if mDir == "" and sSize > 0
+        if sSize != sSize[1]
+            if lpC == "High" and na(mHV)
+                mHV := lpV
+                mHI := lpI
+                mHBr := false
+            if lpC == "Low" and na(mLV)
+                mLV := lpV
+                mLI := lpI
+                mLBr := false
+        if na(mHV) == false and high > mHV
+            [lv, li] = f_lowest(mHI)
             mDir := "Long"
-            mHBroken := true
-            if not na(lastPL)
-                mSwingL := lastPL
-            mLBroken := false
-        if mDir == "" and not na(mSwingL) and low < mSwingL
+            mHBr := true
+            mHBrI := bar_index
+            mLong := true
+            mLV := lv
+            mLI := li
+        if na(mLV) == false and low < mLV
+            [hv, hi2] = f_highest(mLI)
             mDir := "Short"
-            mLBroken := true
-            if not na(lastPH)
-                mSwingH := lastPH
-            mHBroken := false
-    // Long trend: HH devam, LL kirilimi = Bear MSS
-    if mDir == "Long"
-        // HH kirilmis — yeni onaylanmis pivot high bekle
-        if mHBroken
-            if not na(pH)
-                mSwingH := pH
-                mHBroken := false
-        else
-            // Daha yuksek pivot high varsa guncelle
-            if not na(pH) and pH > mSwingH
-                mSwingH := pH
-        // HH kirilimi (devam)
-        if not mHBroken and high > mSwingH
-            mHBroken := true
-            if not na(lastPL)
-                mSwingL := lastPL
-            mLBroken := false
-        // LL kirilmis — yeni onaylanmis pivot low bekle
-        if mLBroken
-            if not na(pL)
-                mSwingL := pL
-                mLBroken := false
-        // LL kirilimi = Bear MSS!
-        if not mLBroken and not na(mSwingL) and low < mSwingL
-            mDir := "Short"
-            mBearMSS := true
-            mLBroken := true
-            if not na(lastPH)
-                mSwingH := lastPH
-            mHBroken := false
-    // Short trend: LL devam, HH kirilimi = Bull MSS
+            mLBr := true
+            mLBrI := bar_index
+            mShort := true
+            mHV := hv
+            mHI := hi2
+    // Short trend
     if mDir == "Short"
-        // LL kirilmis — yeni onaylanmis pivot low bekle
-        if mLBroken
-            if not na(pL)
-                mSwingL := pL
-                mLBroken := false
-        else
-            // Daha dusuk pivot low varsa guncelle
-            if not na(pL) and pL < mSwingL
-                mSwingL := pL
-        // LL kirilimi (devam)
-        if not mLBroken and low < mSwingL
-            mLBroken := true
-            if not na(lastPH)
-                mSwingH := lastPH
-            mHBroken := false
-        // HH kirilmis — yeni onaylanmis pivot high bekle
-        if mHBroken
-            if not na(pH)
-                mSwingH := pH
-                mHBroken := false
-        // HH kirilimi = Bull MSS!
-        if not mHBroken and not na(mSwingH) and high > mSwingH
+        np = false
+        // Block 1: pivot check (strSize[2] lookback)
+        if mLBr and sSize != sSize[2]
+            if lpC == "Low" and lpI >= mLBrI
+                mLV := lpV
+                mLI := lpI
+                mLBr := false
+                np := true
+            if sSize - sSize[1] == 2
+                if (lpC == "Low" and lpI >= mLBrI) or (ppC == "Low" and ppI >= mLBrI)
+                    tV = lpC == "Low" ? lpV : ppV
+                    tI = lpC == "Low" ? lpI : ppI
+                    mLV := tV
+                    mLI := tI
+                    mLBr := false
+                    np := true
+        // Break check
+        if mLBr == false and low < mLV
+            [hv, hi2] = f_highest(mLI)
+            mLBr := true
+            mHBr := false
+            mLBrI := bar_index
+            mHV := hv
+            mHI := hi2
+        else if mHBr == false and high > mHV
+            [lv, li] = f_lowest(mHI)
             mDir := "Long"
-            mBullMSS := true
-            mHBroken := true
-            if not na(lastPL)
-                mSwingL := lastPL
-            mLBroken := false
-    // Sadece MSS sinyallerini say
+            mHBr := true
+            mHBrI := bar_index
+            mLBr := false
+            mLong := true
+            mLV := lv
+            mLI := li
+        // Block 2: post-break pivot check (1-bar lookback)
+        if np == false and mLBr and sSize != sSize[1]
+            nP2 = sSize - sSize[1]
+            if nP2 == 1
+                if lpC == "Low" and lpI >= mLBrI
+                    mLV := lpV
+                    mLI := lpI
+                    mLBr := false
+            if nP2 == 2
+                if (lpC == "Low" and lpI >= mLBrI) or (ppC == "Low" and ppI >= mLBrI)
+                    tV = lpC == "Low" ? lpV : ppV
+                    tI = lpC == "Low" ? lpI : ppI
+                    mLV := tV
+                    mLI := tI
+                    mLBr := false
+    // Long trend
+    if mDir == "Long"
+        np = false
+        // Block 1: pivot check (1-bar lookback — matching main indicator Long code)
+        if mHBr and sSize != sSize[1]
+            nP2 = sSize - sSize[1]
+            if nP2 == 1
+                if lpC == "High" and lpI >= mHBrI
+                    mHV := lpV
+                    mHI := lpI
+                    mHBr := false
+                    np := true
+            if nP2 == 2
+                if (lpC == "High" and lpI >= mHBrI) or (ppC == "High" and ppI >= mHBrI)
+                    tV = lpC == "High" ? lpV : ppV
+                    tI = lpC == "High" ? lpI : ppI
+                    mHV := tV
+                    mHI := tI
+                    mHBr := false
+                    np := true
+        // Break check
+        if mHBr == false and high > mHV
+            [lv, li] = f_lowest(mHI)
+            mHBr := true
+            mLBr := false
+            mHBrI := bar_index
+            mLV := lv
+            mLI := li
+        else if mLBr == false and low < mLV
+            [hv, hi2] = f_highest(mLI)
+            mDir := "Short"
+            mLBr := true
+            mHBr := false
+            mShort := true
+            mLBrI := bar_index
+            mHV := hv
+            mHI := hi2
+        // Block 2: post-break pivot check
+        if np == false and mHBr and sSize != sSize[1]
+            nP2 = sSize - sSize[1]
+            if nP2 == 1
+                if lpC == "High" and lpI >= mHBrI
+                    mHV := lpV
+                    mHI := lpI
+                    mHBr := false
+            if nP2 == 2
+                if (lpC == "High" and lpI >= mHBrI) or (ppC == "High" and ppI >= mHBrI)
+                    tV = lpC == "High" ? lpV : ppV
+                    tI = lpC == "High" ? lpI : ppI
+                    mHV := tV
+                    mHI := tI
+                    mHBr := false
+    // MSS sinyalleri say (mLong = Bull MSS, mShort = Bear MSS)
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
-    if mBullMSS
+    if mLong
         bullSignalCnt += 1
-    if mBearMSS
+    if mShort
         bearSignalCnt += 1
     [bullSignalCnt, bearSignalCnt]
 
