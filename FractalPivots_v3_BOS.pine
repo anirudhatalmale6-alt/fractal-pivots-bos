@@ -259,14 +259,34 @@ f_ltfDetect() =>
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // Fractal degisimi = likidite + BOS (yapi kirimi destek/direnci kirar = likidite alinir)
-    // Ayri sweep kontrolune gerek yok — fractal break kendisi likidite olayidir
+    // IKI ADIMLI SIRA: likidite (ters yon) + BOS (trend yonu)
+    // Bearish kalite: ltfBull (ralli = buy-side likidite) → ltfBear (dusus = BOS)
+    // Bullish kalite: ltfBear (dusus = sell-side likidite) → ltfBull (ralli = BOS)
+    var bool sellSideLiqPending = false   // ltfBear goruldu, bullish BOS bekliyor
+    var bool buySideLiqPending = false    // ltfBull goruldu, bearish BOS bekliyor
+    var int sellSideBar = 0
+    var int buySideBar = 0
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
-    if ltfBull
-        bullSignalCnt += 1
     if ltfBear
-        bearSignalCnt += 1
+        sellSideLiqPending := true
+        sellSideBar := bar_index
+        // Eger buySideLiq bekleniyorsa → bearish BOS tamamlandi
+        if buySideLiqPending
+            bearSignalCnt += 1
+            buySideLiqPending := false
+    if ltfBull
+        buySideLiqPending := true
+        buySideBar := bar_index
+        // Eger sellSideLiq bekleniyorsa → bullish BOS tamamlandi
+        if sellSideLiqPending
+            bullSignalCnt += 1
+            sellSideLiqPending := false
+    // Zaman asimi (80 LTF bar)
+    if sellSideLiqPending and bar_index - sellSideBar > 80
+        sellSideLiqPending := false
+    if buySideLiqPending and bar_index - buySideBar > 80
+        buySideLiqPending := false
     [bullSignalCnt, bearSignalCnt]
 
 // => LTF Zaman Dilimi Eslestirmesi
@@ -306,10 +326,10 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi (40 HTF bar — LTF sinyal HTF BOS'a yakin olmali)
-if ltfBullReady and bar_index - ltfBullReadyBar > 40
+// Zaman asimi (10 HTF bar — LTF sinyal HTF BOS'a cok yakin olmali)
+if ltfBullReady and bar_index - ltfBullReadyBar > 10
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 40
+if ltfBearReady and bar_index - ltfBearReadyBar > 10
     ltfBearReady := false
 
 // BOS Sayaclari
