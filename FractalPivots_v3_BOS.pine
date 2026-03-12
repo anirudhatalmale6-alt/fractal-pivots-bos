@@ -401,9 +401,9 @@ if ltfBullSignal
     ltfBullPrecursor := true
     ltfBullPrecursorBar := bar_index
     // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    // Minimum 2 bar aralik — ayni barda olan gurultu degil
+    // Minimum 1 bar aralik — sadece ayni barda olan gurultu filtrele
     // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 2
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 1
         ltfBullReady := true
         ltfBullReadyBar := bar_index
         ltfBearPrecursor := false
@@ -412,9 +412,9 @@ if ltfBearSignal
     ltfBearPrecursor := true
     ltfBearPrecursorBar := bar_index
     // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    // Minimum 2 bar aralik — ayni barda olan gurultu degil
+    // Minimum 1 bar aralik — sadece ayni barda olan gurultu filtrele
     // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 2
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 1
         ltfBearReady := true
         ltfBearReadyBar := bar_index
         ltfBullPrecursor := false
@@ -934,7 +934,7 @@ if bosDashEnableInput
         "Sol Ust" => position.top_left
         "Sag Alt" => position.bottom_right
         "Sol Alt" => position.bottom_left
-    var table dash = table.new(position.top_right, 2, 4, bgcolor = color.new(#333333, 0), border_width = 1, border_color = color.new(#555555, 0))
+    var table dash = table.new(position.top_right, 2, 5, bgcolor = color.new(#333333, 0), border_width = 1, border_color = color.new(#555555, 0))
     if barstate.islast
         // Tablo pozisyonunu guncelle
         table.set_position(dash, dashPos)
@@ -954,3 +954,10 @@ if bosDashEnableInput
         htfLabel = timeframe.period
         table.cell(dash, 0, 3, "Motor Baglantisi",   text_color = color.gray,   text_size = size.small, bgcolor = color.new(#444444, 0))
         table.cell(dash, 1, 3, "LTF: " + ltfLabel + " | HTF: " + htfLabel, text_color = color.new(#90CAF9, 0), text_size = size.small, bgcolor = color.new(#333333, 0))
+        // Satir 4: Debug — LTF sinyal durumlari
+        debugBull = str.tostring(not na(ltfBullCnt) ? ltfBullCnt : 0)
+        debugBear = str.tostring(not na(ltfBearCnt) ? ltfBearCnt : 0)
+        debugPrec = (ltfBullPrecursor ? "BP" : "-") + " " + (ltfBearPrecursor ? "SP" : "-")
+        debugReady = (ltfBullReady ? "BR" : "-") + " " + (ltfBearReady ? "SR" : "-")
+        table.cell(dash, 0, 4, "DEBUG LTF",   text_color = color.orange,   text_size = size.tiny, bgcolor = color.new(#444444, 0))
+        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugPrec + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
