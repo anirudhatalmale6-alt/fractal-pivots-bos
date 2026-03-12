@@ -204,18 +204,19 @@ f_zigzagmaj(_mjarr) =>
 
 // => LTF Likidite Tespit Fonksiyonu
 f_ltfDetect() =>
-    // Swing tespiti: lookback 3 (duyarli ama yeterli)
-    ph = ta.pivothigh(high, 3, 3)
-    pl = ta.pivotlow(low, 3, 3)
+    // Swing tespiti: lookback 2 (daha duyarli, daha fazla swing noktasi yakalar)
+    ph = ta.pivothigh(high, 2, 2)
+    pl = ta.pivotlow(low, 2, 2)
     var float swH = na
     var float swL = na
     if not na(ph)
         swH := ph
     if not na(pl)
         swL := pl
-    // Likidite surme: mum swing seviyesinin altina/ustune wick atar ama geri kapanir
-    bullSweep = not na(swL) and low < swL and close > swL
-    bearSweep = not na(swH) and high > swH and close < swH
+    // Likidite surme: fiyat swing seviyesine dokunur veya gecer (ayni barda kapanma sarti YOK)
+    // Boylece coklu-bar sweep'ler de yakalanir
+    bullSweep = not na(swL) and low <= swL
+    bearSweep = not na(swH) and high >= swH
     // Bekleyen likidite surmeleri
     var bool bullLiqPending = false
     var bool bearLiqPending = false
@@ -227,7 +228,9 @@ f_ltfDetect() =>
     if bearSweep
         bearLiqPending := true
         bearSweepBar := bar_index
-    // LTF BOS: likidite aldiktan sonra guncel swing seviyesini kirar
+    // LTF BOS: likidite aldiktan sonra ters yone kirilim
+    // Bullish: swing low altina indikten sonra swing high ustune close
+    // Bearish: swing high ustune ciktiktan sonra swing low altina close
     bullLiqBOS = bullLiqPending and not na(swH) and close > swH
     bearLiqBOS = bearLiqPending and not na(swL) and close < swL
     var int bullSignalCnt = 0
@@ -240,10 +243,10 @@ f_ltfDetect() =>
         bearSignalCnt += 1
         bearLiqPending := false
         bullLiqPending := false
-    // Zaman asimi (40 LTF bar)
-    if bullLiqPending and bar_index - bullSweepBar > 40
+    // Zaman asimi (50 LTF bar)
+    if bullLiqPending and bar_index - bullSweepBar > 50
         bullLiqPending := false
-    if bearLiqPending and bar_index - bearSweepBar > 40
+    if bearLiqPending and bar_index - bearSweepBar > 50
         bearLiqPending := false
     [bullSignalCnt, bearSignalCnt]
 
@@ -282,10 +285,10 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi (15 HTF bar — LTF sinyal HTF BOS'a yakin olmali)
-if ltfBullReady and bar_index - ltfBullReadyBar > 15
+// Zaman asimi (25 HTF bar — LTF sinyal HTF BOS'a yakin olmali)
+if ltfBullReady and bar_index - ltfBullReadyBar > 25
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 15
+if ltfBearReady and bar_index - ltfBearReadyBar > 25
     ltfBearReady := false
 
 // BOS Sayaclari
