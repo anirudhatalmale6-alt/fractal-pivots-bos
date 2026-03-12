@@ -224,27 +224,23 @@ f_ltfDetect() =>
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if low < ltfCL
-            // Destek kirildi → Bearish
-            if high > ltfCH
-                ltfCH := high
-                ltfCL := low
+        if high > ltfCH
+            // Devam: yeni yuksek (outside bar dahil)
+            ltfCH := high
+            ltfCL := low
+        else if low < ltfCL
+            // Sadece destek kirildi → Bearish
             ltfCond := "Bearish"
             ltfBear := true
-        else if high > ltfCH
+    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
+        if low < ltfCL
+            // Devam: yeni dusuk (outside bar dahil)
             ltfCH := high
             ltfCL := low
-    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH
-            // Direnc kirildi → Bullish
-            if low < ltfCL
-                ltfCH := high
-                ltfCL := low
+        else if high > ltfCH
+            // Sadece direnc kirildi → Bullish
             ltfCond := "Bullish"
             ltfBull := true
-        else if low < ltfCL
-            ltfCH := high
-            ltfCL := low
     // Fractal pivot seviyeleri (swing high/low) — reset oncesi yakala
     var float fracH = na
     var float fracL = na
@@ -437,47 +433,33 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
             strCond         := "Bearish"
             strBearish      := true
 
-// Bullish — destek kirilimi (low break) ÖNCE kontrol edilir
+// Bullish — devam (yeni yuksek) ÖNCE kontrol edilir
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    if low < strCandleLow
-        // Destek kirildi → Bearish'e gec
-        // Eger ayni bar yeni yuksek de yaptiysa (outside bar), önce aralik guncelle
-        if high > strCandleHigh
-            strCandleHigh   := high
-            strCandleLow    := low
-            strCandleTime   := time
-            strCandleIndex  := bar_index
-            f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    if high > strCandleHigh
+        // Yeni yuksek → devam (outside bar dahil: hem H hem L kirilsa bile yeni HH = devam)
+        strCandleHigh   := high
+        strCandleLow    := low
+        strCandleTime   := time
+        strCandleIndex  := bar_index
+        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    else if low < strCandleLow
+        // Sadece destek kirildi (yeni yuksek YOK) → Bearish'e gec
         strCond         := "Bearish"
         strBearish      := true
-    else if high > strCandleHigh
-        // Devam: yeni yuksek
+
+// Bearish — devam (yeni dusuk) ÖNCE kontrol edilir
+if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
+    if low < strCandleLow
+        // Yeni dusuk → devam (outside bar dahil: hem H hem L kirilsa bile yeni LL = devam)
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
         strCandleIndex  := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
-
-// Bearish — direnç kirilimi (high break) ÖNCE kontrol edilir
-if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    if high > strCandleHigh
-        // Direnc kirildi → Bullish'e gec
-        // Eger ayni bar yeni dusuk de yaptiysa (outside bar), önce aralik guncelle
-        if low < strCandleLow
-            strCandleHigh   := high
-            strCandleLow    := low
-            strCandleTime   := time
-            strCandleIndex  := bar_index
-            f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    else if high > strCandleHigh
+        // Sadece direnc kirildi (yeni dusuk YOK) → Bullish'e gec
         strCond         := "Bullish"
         strBullish      := true
-    else if low < strCandleLow
-        // Devam: yeni dusuk
-        strCandleHigh   := high
-        strCandleLow    := low
-        strCandleTime   := time
-        strCandleIndex  := bar_index
-        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
 
 if strBearish
     strPivHighest       := strCandleHigh
