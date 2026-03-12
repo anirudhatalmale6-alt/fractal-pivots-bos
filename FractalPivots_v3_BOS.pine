@@ -393,10 +393,10 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi (20 HTF bar — major LTF BOS HTF'ye yakin olmali)
-if ltfBullReady and bar_index - ltfBullReadyBar > 20
+// Zaman asimi (10 HTF bar — LTF sinyali HTF BOS'a yakin olmali)
+if ltfBullReady and bar_index - ltfBullReadyBar > 10
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 20
+if ltfBearReady and bar_index - ltfBearReadyBar > 10
     ltfBearReady := false
 
 // BOS Sayaclari
@@ -847,10 +847,13 @@ if mjDir == "Long"
 // Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
 qualityBOSDetected = false
 
-// MSS: Trend donusu — sayaclari sifirla (LTF bayraklari KALSIN, ilk devam BOS icin kullanilacak)
+// MSS: Trend donusu — sayaclari ve LTF bayraklari sifirla
+// Kaliteli BOS icin MSS SONRASI taze LTF sinyali gerekli
 if mjLong or mjShort
     rawBOSCount     := 0
     qualityBOSCount := 0
+    ltfBullReady    := false
+    ltfBearReady    := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
