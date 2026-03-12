@@ -401,8 +401,9 @@ if ltfBullSignal
     ltfBullPrecursor := true
     ltfBullPrecursorBar := bar_index
     // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    // Minimum 2 bar aralik — ayni barda veya hemen sonrasinda olan gurultu degil
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 2 and bar_index - ltfBearPrecursorBar <= 15
+    // Minimum 2 bar aralik — ayni barda olan gurultu degil
+    // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 2
         ltfBullReady := true
         ltfBullReadyBar := bar_index
         ltfBearPrecursor := false
@@ -411,20 +412,18 @@ if ltfBearSignal
     ltfBearPrecursor := true
     ltfBearPrecursorBar := bar_index
     // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    // Minimum 2 bar aralik — ayni barda veya hemen sonrasinda olan gurultu degil
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 2 and bar_index - ltfBullPrecursorBar <= 15
+    // Minimum 2 bar aralik — ayni barda olan gurultu degil
+    // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 2
         ltfBearReady := true
         ltfBearReadyBar := bar_index
         ltfBullPrecursor := false
-// Zaman asimi (15 HTF bar)
+// Zaman asimi — sadece kaliteli hazir bayraklari (15 HTF bar)
+// Onculer zaman asimina tabi DEGIL — HTF trend degisiminde sifirlanir
 if ltfBullReady and bar_index - ltfBullReadyBar > 15
     ltfBullReady := false
 if ltfBearReady and bar_index - ltfBearReadyBar > 15
     ltfBearReady := false
-if ltfBullPrecursor and bar_index - ltfBullPrecursorBar > 15
-    ltfBullPrecursor := false
-if ltfBearPrecursor and bar_index - ltfBearPrecursorBar > 15
-    ltfBearPrecursor := false
 
 // BOS Sayaclari
 var int rawBOSCount     = 0
