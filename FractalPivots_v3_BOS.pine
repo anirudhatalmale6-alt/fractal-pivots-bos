@@ -224,32 +224,22 @@ f_ltfDetect() =>
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close >= open
-                // Yesil outside + Bullish → devam
+        if low < ltfCL
+            // Destek kirildi → Bearish
+            if high > ltfCH
                 ltfCH := high
                 ltfCL := low
-            else
-                // Kirmizi outside + Bullish → Bearish
-                ltfCond := "Bearish"
-                ltfBear := true
-        else if low < ltfCL
             ltfCond := "Bearish"
             ltfBear := true
         else if high > ltfCH
             ltfCH := high
             ltfCL := low
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH and low < ltfCL
-            if close >= open
-                // Yesil outside + Bearish → Bullish
-                ltfCond := "Bullish"
-                ltfBull := true
-            else
-                // Kirmizi outside + Bearish → devam
+        if high > ltfCH
+            // Direnc kirildi → Bullish
+            if low < ltfCL
                 ltfCH := high
                 ltfCL := low
-        else if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
         else if low < ltfCL
@@ -447,48 +437,42 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
             strCond         := "Bearish"
             strBearish      := true
 
-// Bullish
+// Bullish — destek kirilimi (low break) ÖNCE kontrol edilir
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    if high > strCandleHigh and low < strCandleLow
-        if close >= open
-            // Yesil outside bar + Bullish → devam, aralik genislet
+    if low < strCandleLow
+        // Destek kirildi → Bearish'e gec
+        // Eger ayni bar yeni yuksek de yaptiysa (outside bar), önce aralik guncelle
+        if high > strCandleHigh
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
             f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
-        else
-            // Kirmizi outside bar + Bullish → Bearish'e gec
-            strCond         := "Bearish"
-            strBearish      := true
-    else if low < strCandleLow
         strCond         := "Bearish"
         strBearish      := true
     else if high > strCandleHigh
+        // Devam: yeni yuksek
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
         strCandleIndex  := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
 
-// Bearish
+// Bearish — direnç kirilimi (high break) ÖNCE kontrol edilir
 if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    if high > strCandleHigh and low < strCandleLow
-        if close >= open
-            // Yesil outside bar + Bearish → Bullish'e gec
-            strCond         := "Bullish"
-            strBullish      := true
-        else
-            // Kirmizi outside bar + Bearish → devam, aralik genislet
+    if high > strCandleHigh
+        // Direnc kirildi → Bullish'e gec
+        // Eger ayni bar yeni dusuk de yaptiysa (outside bar), önce aralik guncelle
+        if low < strCandleLow
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
             f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
-    else if high > strCandleHigh
         strCond         := "Bullish"
         strBullish      := true
     else if low < strCandleLow
+        // Devam: yeni dusuk
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
