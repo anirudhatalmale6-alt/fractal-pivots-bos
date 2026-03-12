@@ -1,0 +1,797 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ARrowofTime
+
+//@version=6
+indicator("Fractal Pivots v3 | Amir.R.A", overlay = true, max_lines_count = 500, max_labels_count = 500, max_bars_back = 500, max_boxes_count = 500)
+
+//---------- INPUTS
+// => Structure
+var string t01_01               = "Structure"
+var string t01__01              = "Chart Start"
+var string t01__02              = ""
+var string t01__03              = "Timeframe"
+var string t01__04              = "Breakout Bars"
+strtimeACTIVEbInput             = input.bool        (group = t01_01, title = t01__01, inline = "1", defval = false)
+strTIMEInput                    = input.time        (group = t01_01, title = t01__02, inline = "1", defval = timestamp("20 Apr 2025 21:00"))
+
+// => Fractals
+var string t02_01               = "Fractals"
+var string t02__01              = "Pivot Style"
+var string t02__02              = "H Outside Line"
+var string t02__03              = ""
+var string t02__04              = ""
+var string t02__05              = ""
+var string t02__06              = "L Outside Line"
+var string t02__07              = ""
+var string t02__08              = ""
+var string t02__09              = ""
+var string t02__10              = "Zigzag Line  "
+var string t02__11              = ""
+var string t02__12              = ""
+var string t02__13              = ""
+strpivotSTYLEInput              = input.string  (group = t02_01, title = t02__01, inline = "0",  defval = "Label", options = ["Label", "Dot", "None"])
+strlineBULLISHInput             = input.bool    (group = t02_01, title = t02__02, inline = "1", defval = true)
+strlineBLCOLORInput             = input.color   (group = t02_01, title = t02__03, inline = "1", defval = color.new(color.green, 0))
+strlineBLSTYLEInput             = input.string  (group = t02_01, title = t02__04, inline = "1", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+strlineBLWIDTHInput             = input.int     (group = t02_01, title = t02__05, inline = "1", defval = 1, minval = 1)
+strlineBEARISHInput             = input.bool    (group = t02_01, title = t02__06, inline = "2", defval = true)
+strlineBRCOLORInput             = input.color   (group = t02_01, title = t02__07, inline = "2", defval = color.new(color.red, 0))
+strlineBRSTYLEInput             = input.string  (group = t02_01, title = t02__08, inline = "2", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+strlineBRWIDTHInput             = input.int     (group = t02_01, title = t02__09, inline = "2", defval = 1, minval = 1)
+strZIGZAGInput                  = input.bool    (group = t02_01, title = t02__10, inline = "3", defval = true)
+strzigzagCOLORInput             = input.color   (group = t02_01, title = t02__11, inline = "3", defval = color.new(color.blue, 50))
+strzigzagSTYLEInput             = input.string  (group = t02_01, title = t02__12, inline = "3", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+strzigzagWIDTHInput             = input.int     (group = t02_01, title = t02__13, inline = "3", defval = 1, minval = 1)
+strzigzagShowUnConfirmedInput   = input.bool    (group = t02_01, title = "Show Last Unconfirmed line", defval = false)
+
+// => Break Lines
+var string t03_01               = "Break Lines"
+var string t03__01              = "New H Line  "
+var string t03__02              = ""
+var string t03__03              = ""
+var string t03__04              = ""
+var string t03__05              = "H Break Line"
+var string t03__06              = ""
+var string t03__07              = ""
+var string t03__08              = ""
+var string t03__09              = "New L Line   "
+var string t03__10              = ""
+var string t03__11              = ""
+var string t03__12              = ""
+var string t03__13              = "L Break Line "
+var string t03__14              = ""
+var string t03__15              = ""
+var string t03__16              = ""
+var string t03__17              = "Zigzag Line  "
+var string t03__18              = ""
+var string t03__19              = ""
+var string t03__20              = ""
+mjlineNHbInput                  = input.bool    (group = t03_01, title = t03__01, inline = "1", defval = true)
+mjlineNHCOLORInput              = input.color   (group = t03_01, title = t03__02, inline = "1", defval = color.new(color.green, 0))
+mjlineNHSTYLEInput              = input.string  (group = t03_01, title = t03__03, inline = "1", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+mjlineNHWIDTHInput              = input.int     (group = t03_01, title = t03__04, inline = "1", defval = 1, minval = 1)
+mjlineBHbInput                  = input.bool    (group = t03_01, title = t03__05, inline = "2", defval = true)
+mjlineBHCOLORInput              = input.color   (group = t03_01, title = t03__06, inline = "2", defval = color.new(color.green, 0))
+mjlineBHSTYLEInput              = input.string  (group = t03_01, title = t03__07, inline = "2", defval = "Dashed", options = ["Solid", "Dashed", "Dotted"])
+mjlineBHWIDTHInput              = input.int     (group = t03_01, title = t03__08, inline = "2", defval = 1, minval = 1)
+mjlineNLbInput                  = input.bool    (group = t03_01, title = t03__09, inline = "3", defval = true)
+mjlineNLCOLORInput              = input.color   (group = t03_01, title = t03__10, inline = "3", defval = color.new(color.red, 0))
+mjlineNLSTYLEInput              = input.string  (group = t03_01, title = t03__11, inline = "3", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+mjlineNLWIDTHInput              = input.int     (group = t03_01, title = t03__12, inline = "3", defval = 1, minval = 1)
+mjlineBLbInput                  = input.bool    (group = t03_01, title = t03__13, inline = "4", defval = true)
+mjlineBLCOLORInput              = input.color   (group = t03_01, title = t03__14, inline = "4", defval = color.new(color.red, 0))
+mjlineBLSTYLEInput              = input.string  (group = t03_01, title = t03__15, inline = "4", defval = "Dashed", options = ["Solid", "Dashed", "Dotted"])
+mjlineBLWIDTHInput              = input.int     (group = t03_01, title = t03__16, inline = "4", defval = 1, minval = 1)
+mjZIGZAGbInput                  = input.bool    (group = t03_01, title = t03__17, inline = "5", defval = true)
+mjzigzagCOLORInput              = input.color   (group = t03_01, title = t03__18, inline = "5", defval = color.new(color.orange, 50))
+mjzigzagSTYLEInput              = input.string  (group = t03_01, title = t03__19, inline = "5", defval = "Solid", options = ["Solid", "Dashed", "Dotted"])
+mjzigzagWIDTHInput              = input.int     (group = t03_01, title = t03__20, inline = "5", defval = 1, minval = 1)
+
+// => Alerts
+var string t04_01           = "Alerts"
+var string t04__01          = "Major Long"
+var string t04__02          = ""
+var string t04__03          = "Major Short"
+var string t04__04          = ""
+alertmjLONGbInput           = input.bool        (group = t04_01, title = t04__01, defval = true, inline = "")
+alertmjlongMSGInput         = input.text_area   (group = t04_01, title = t04__02, defval = "Major Long")
+alertmjSHORTbInput          = input.bool        (group = t04_01, title = t04__03, defval = true, inline = "")
+alertmjshortMSGInput        = input.text_area   (group = t04_01, title = t04__04, defval = "Major Short")
+
+// => BOS Kutu & Dashboard
+var string t05_01           = "BOS Kutu & Dashboard"
+bosBoxEnableInput           = input.bool    (group = t05_01, title = "BOS Kutulari  ", inline = "b1", defval = true)
+bosBoxFillInput             = input.color   (group = t05_01, title = "",              inline = "b1", defval = color.new(color.gray, 80))
+bosBoxBorderInput           = input.color   (group = t05_01, title = "",              inline = "b1", defval = color.gray)
+bosDashEnableInput          = input.bool    (group = t05_01, title = "Dashboard     ", inline = "b2", defval = true)
+bosDashPosInput             = input.string  (group = t05_01, title = "",              inline = "b2", defval = "Sag Ust", options = ["Sag Ust", "Sol Ust", "Sag Alt", "Sol Alt"])
+bosAlertEnableInput         = input.bool    (group = t05_01, title = "BOS Alarmi    ", inline = "b3", defval = true)
+bosAlertCountInput          = input.int     (group = t05_01, title = "Sayi",           inline = "b3", defval = 3, minval = 1, maxval = 20)
+bosAlertMsgInput            = input.text_area(group = t05_01, title = "Alarm Mesaji",                  defval = "Kaliteli BOS limiti doldu!")
+
+// ---------- CALCULATIONS
+// => Type
+type structure
+    string  cond
+    float   pivot
+    int     pivotindex
+    int     pivottime
+    line    lnbr
+    line    lnzigzag
+    label   lbpivot
+
+type major
+    string  cond
+    float   pivot
+    int     pivotindex
+    int     pivottime
+    line    lnzigzag
+
+// => Functions
+f_breakline(_linehigh, _linelow, _x1, _x2, _high, _low) =>
+    if strlineBEARISHInput
+        line.set_xy1(_linehigh, _x1, _high)
+        line.set_xy2(_linehigh, _x2, _high)
+    if strlineBULLISHInput
+        line.set_xy1(_linelow, _x1, _low)
+        line.set_xy2(_linelow, _x2, _low)
+
+f_linestyle(_style) =>
+    st = switch _style
+        "Solid"     => line.style_solid
+        "Dotted"    => line.style_dotted
+        "Dashed"    => line.style_dashed
+
+raw_lowest(_indexstart) =>
+    lowestval  = low
+    lowestind  = bar_index
+    for i = (bar_index - 1) to _indexstart
+        if low[bar_index - i] <= lowestval
+            lowestval  := low[bar_index - i]
+            lowestind  := i
+    [lowestval, lowestind]
+
+raw_highest(_indexstart) =>
+    highestval  = high
+    highestind  = bar_index
+    for i = (bar_index - 1) to _indexstart
+        if high[bar_index - i] >= highestval
+            highestval  := high[bar_index - i]
+            highestind  := i
+    [highestval, highestind]
+
+f_highest(_indexstart) =>
+    float   highestval = na
+    int     highestind = na
+    [lowest_value, ind] = raw_lowest(_indexstart)
+    if(lowest_value==low and close>open)
+        highestval  := high[1]
+        highestind  := bar_index-1
+    else
+        highestval  := high
+        highestind  := bar_index
+    for i = (bar_index - 1) to _indexstart
+        if high[bar_index - i] >= highestval
+            highestval  := high[bar_index - i]
+            highestind  := i
+    [highestval, highestind]
+
+f_lowest(_indexstart) =>
+    float lowestval = na
+    int lowestind = na
+    [highest_value, ind]= raw_highest(_indexstart)
+    if(highest_value==high and close<open)
+        lowestval  := low[1]
+        lowestind  := bar_index-1
+    else
+        lowestval  := low
+        lowestind  := bar_index
+    for i = (bar_index - 1) to _indexstart
+        if low[bar_index - i] <= lowestval
+            lowestval  := low[bar_index - i]
+            lowestind  := i
+    [lowestval, lowestind]
+
+f_zigzagmaj(_mjarr) =>
+    if mjZIGZAGbInput and array.size(_mjarr) >= 2
+        typepre             = array.get(_mjarr, array.size(_mjarr) - 2)
+        typecur             = array.get(_mjarr, array.size(_mjarr) - 1)
+        x1                  = typepre.pivottime
+        y1                  = typepre.pivot
+        x2                  = typecur.pivottime
+        y2                  = typecur.pivot
+        typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
+
+// => LTF Likidite Tespit Fonksiyonu
+f_ltfDetect() =>
+    ph = ta.pivothigh(high, 3, 3)
+    pl = ta.pivotlow(low, 3, 3)
+    var float swH = na
+    var float swL = na
+    if not na(ph)
+        swH := ph
+    if not na(pl)
+        swL := pl
+    // Likidite surme: mum swing seviyesinin altina/ustune wick atar ama geri kapanir
+    bullSweep = not na(swL) and low < swL and close > swL
+    bearSweep = not na(swH) and high > swH and close < swH
+    // Bekleyen likidite surmeleri
+    var bool bullLiqPending = false
+    var bool bearLiqPending = false
+    var int bullSweepBar = 0
+    var int bearSweepBar = 0
+    if bullSweep
+        bullLiqPending := true
+        bullSweepBar := bar_index
+    if bearSweep
+        bearLiqPending := true
+        bearSweepBar := bar_index
+    // LTF BOS: likidite aldiktan sonra yapiyi kirar
+    bullLiqBOS = bullLiqPending and not na(swH) and close > swH
+    bearLiqBOS = bearLiqPending and not na(swL) and close < swL
+    var int bullSignalCnt = 0
+    var int bearSignalCnt = 0
+    if bullLiqBOS
+        bullSignalCnt += 1
+        bullLiqPending := false
+        bearLiqPending := false
+    if bearLiqBOS
+        bearSignalCnt += 1
+        bearLiqPending := false
+        bullLiqPending := false
+    // Zaman asimi (50 LTF bar)
+    if bullLiqPending and bar_index - bullSweepBar > 50
+        bullLiqPending := false
+    if bearLiqPending and bar_index - bearSweepBar > 50
+        bearLiqPending := false
+    [bullSignalCnt, bearSignalCnt]
+
+// => LTF Zaman Dilimi Eslestirmesi
+lowerTF = switch timeframe.period
+    "1"  => "15S"
+    "5"  => "1"
+    "15" => "5"
+    "60" => "15"
+    => timeframe.period
+supportedTF = (timeframe.period == "1" or timeframe.period == "5" or timeframe.period == "15" or timeframe.period == "60")
+
+// => LTF Sinyal Alma (request.security)
+[ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
+var int prevLtfBullCnt = 0
+var int prevLtfBearCnt = 0
+ltfBullSignal = supportedTF and not na(ltfBullCnt) and ltfBullCnt > prevLtfBullCnt
+ltfBearSignal = supportedTF and not na(ltfBearCnt) and ltfBearCnt > prevLtfBearCnt
+if not na(ltfBullCnt)
+    prevLtfBullCnt := ltfBullCnt
+if not na(ltfBearCnt)
+    prevLtfBearCnt := ltfBearCnt
+
+// LTF sinyal bayraklari
+var bool ltfBullReady = false
+var bool ltfBearReady = false
+var int ltfBullReadyBar = 0
+var int ltfBearReadyBar = 0
+if ltfBullSignal
+    ltfBullReady := true
+    ltfBullReadyBar := bar_index
+if ltfBearSignal
+    ltfBearReady := true
+    ltfBearReadyBar := bar_index
+// Zaman asimi (100 HTF bar)
+if ltfBullReady and bar_index - ltfBullReadyBar > 100
+    ltfBullReady := false
+if ltfBearReady and bar_index - ltfBearReadyBar > 100
+    ltfBearReady := false
+
+// BOS Sayaclari
+var int rawBOSCount     = 0
+var int qualityBOSCount = 0
+
+// => Fractal Pivot
+var string      strCond             = ""
+var line        strHighLine         = line.new(na, na, na, na, xloc = xloc.bar_index, extend = extend.none, color = strlineBRCOLORInput, style = f_linestyle(strlineBRSTYLEInput), width = strlineBRWIDTHInput)
+var line        strLowLine          = line.new(na, na, na, na, xloc = xloc.bar_index, extend = extend.none, color = strlineBLCOLORInput, style = f_linestyle(strlineBLSTYLEInput), width = strlineBLWIDTHInput)
+var line        strZigzagLine       = line.new(na, na, na, na, xloc = xloc.bar_time,  extend = extend.none, color = strzigzagCOLORInput, style = f_linestyle(strzigzagSTYLEInput), width = strzigzagWIDTHInput)
+var structure[] strARR              = array.new<structure>()
+var float       strCandleHigh       = na
+var float       strCandleLow        = na
+var int         strCandleTime       = na
+var int         strCandleIndex      = na
+var float       strPivHighest       = na
+var int         strPivHighestIndex  = na
+var int         strPivHighestTime   = na
+var float       strPivLowest        = na
+var int         strPivLowestIndex   = na
+var int         strPivLowestTime    = na
+var int         strSize             = 0
+
+strBullish  = false
+strBullish2 = false
+strBearish  = false
+strBearish2 = false
+
+// First Pivot
+if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
+    if strCond == ""
+        strCandleHigh       := high
+        strCandleLow        := low
+        strCandleTime       := time
+        strCandleIndex      := bar_index
+        strCond             := "First"
+        strPivHighest       := high
+        strPivLowest        := low
+        strPivHighestTime   := time
+        strPivLowestTime    := time
+        strPivHighestIndex  := bar_index
+        strPivLowestIndex   := bar_index
+        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    if strCond == "First" and barstate.isconfirmed
+        if high > strCandleHigh and close >= open
+            strCond         := "Bullish"
+            strBullish      := true
+        if low < strCandleLow and close < open
+            strCond         := "Bearish"
+            strBearish      := true
+
+// Bullish
+if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
+    if high > strCandleHigh and low < strCandleLow
+        if close >= open
+            strCond         := "Bearish"
+            strBearish      := true
+            strBearish2     := true
+        else
+            strCandleHigh   := high
+            strCandleLow    := low
+            strCandleTime   := time
+            strCandleIndex  := bar_index
+            strCond         := "Bearish"
+            strBearish      := true
+    else if low < strCandleLow
+        strCond         := "Bearish"
+        strBearish      := true
+    else if high > strCandleHigh
+        strCandleHigh   := high
+        strCandleLow    := low
+        strCandleTime   := time
+        strCandleIndex  := bar_index
+        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+
+// Bearish
+if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
+    if high > strCandleHigh and low < strCandleLow
+        if close >= open
+            strCandleHigh   := high
+            strCandleLow    := low
+            strCandleTime   := time
+            strCandleIndex  := bar_index
+            strCond         := "Bullish"
+            strBullish      := true
+        else
+            strCond         := "Bullish"
+            strBullish      := true
+            strBullish2     := true
+    else if high > strCandleHigh
+        strCond         := "Bullish"
+        strBullish      := true
+    else if low < strCandleLow
+        strCandleHigh   := high
+        strCandleLow    := low
+        strCandleTime   := time
+        strCandleIndex  := bar_index
+        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+
+if strBearish
+    strPivHighest       := strCandleHigh
+    strPivHighestIndex  := strCandleIndex
+    strPivHighestTime   := strCandleTime
+if strBullish
+    strPivLowest        := strCandleLow
+    strPivLowestIndex   := strCandleIndex
+    strPivLowestTime    := strCandleTime
+
+if strlineBEARISHInput
+    line.set_x2(strHighLine, bar_index + 1)
+if strlineBULLISHInput
+    line.set_x2(strLowLine, bar_index + 1)
+if strZIGZAGInput
+    line.set_xy2(strZigzagLine, strCandleTime, (strCond == "Bullish" ? strCandleHigh : strCandleLow))
+
+if (strBullish or strBearish)
+    line.set_x2(strHighLine, bar_index)
+    line.set_x2(strLowLine, bar_index)
+    if strZIGZAGInput
+        if strBullish
+            line.set_xy1(strZigzagLine, strPivLowestTime, strPivLowest)
+            line.set_xy2(strZigzagLine, strCandleTime, strCandleHigh)
+        if strBearish
+            line.set_xy1(strZigzagLine, strPivHighestTime, strPivHighest)
+            line.set_xy2(strZigzagLine, strCandleTime, strCandleLow)
+
+// Add Low Level
+if strBullish
+    typenew = structure.new("Low", strCandleLow, strCandleIndex, strCandleTime)
+    if strlineBEARISHInput
+        typenew.lnbr        := line.copy(strHighLine)
+    if strZIGZAGInput and array.size(strARR) > 0
+        typelast            = array.last(strARR)
+        x1                  = typelast.pivottime
+        y1                  = typelast.pivot
+        typenew.lnzigzag    := line.new(x1, y1, strCandleTime, strCandleLow, xloc = xloc.bar_time, extend = extend.none, color = strzigzagCOLORInput, style = f_linestyle(strzigzagSTYLEInput), width = strzigzagWIDTHInput)
+    if strpivotSTYLEInput != "None"
+        txt                 = strpivotSTYLEInput == "Label" ? "L" : "🔴"
+        lbcolor             = strpivotSTYLEInput == "Label" ? color.red : color.new(color.white, 100)
+        typenew.lbpivot     := label.new(strCandleTime, strCandleLow, txt, xloc = xloc.bar_time, color = lbcolor, style = label.style_label_up, textcolor = color.white, size = size.tiny)
+    array.push(strARR, typenew)
+    strCandleHigh           := high
+    strCandleLow            := low
+    strCandleTime           := time
+    strCandleIndex          := bar_index
+    strSize                 := strSize + 1
+    f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    if strBullish2
+        strCond := "Bearish"
+        typenew := structure.new("High", strCandleHigh, strCandleIndex, strCandleTime)
+        if strZIGZAGInput and array.size(strARR) > 0
+            typelast            = array.last(strARR)
+            x1                  = typelast.pivottime
+            y1                  = typelast.pivot
+            typenew.lnzigzag    := line.new(x1, y1, strCandleTime, strCandleHigh, xloc = xloc.bar_time, extend = extend.none, color = strzigzagCOLORInput, style = f_linestyle(strzigzagSTYLEInput), width = strzigzagWIDTHInput)
+        if strpivotSTYLEInput != "None"
+            txt                 = strpivotSTYLEInput == "Label" ? "H" : "🟢"
+            lbcolor             = strpivotSTYLEInput == "Label" ? color.green : color.new(color.white, 100)
+            typenew.lbpivot     := label.new(strCandleTime, strCandleHigh, txt, xloc = xloc.bar_time, color = lbcolor, style = label.style_label_down, textcolor = color.white, size = size.tiny)
+        array.push(strARR, typenew)
+        strSize := strSize + 1
+        x1      = strCandleTime
+        y1      = strCandleHigh
+        line.set_xy1(strZigzagLine, x1, y1)
+        line.set_xy2(strZigzagLine, strCandleTime, strCandleLow)
+        strPivHighest       := strCandleHigh
+        strPivHighestIndex  := strCandleIndex
+        strPivHighestTime   := strCandleTime
+
+// Add High Level
+if strBearish
+    typenew = structure.new("High", strCandleHigh, strCandleIndex, strCandleTime)
+    if strlineBULLISHInput
+        typenew.lnbr        := line.copy(strLowLine)
+    if strZIGZAGInput and array.size(strARR) > 0
+        typelast            = array.last(strARR)
+        x1                  = typelast.pivottime
+        y1                  = typelast.pivot
+        typenew.lnzigzag    := line.new(x1, y1, strCandleTime, strCandleHigh, xloc = xloc.bar_time, extend = extend.none, color = strzigzagCOLORInput, style = f_linestyle(strzigzagSTYLEInput), width = strzigzagWIDTHInput)
+    if strpivotSTYLEInput != "None"
+        txt                 = strpivotSTYLEInput == "Label" ? "H" : "🟢"
+        lbcolor             = strpivotSTYLEInput == "Label" ? color.green : color.new(color.white, 100)
+        typenew.lbpivot     := label.new(strCandleTime, strCandleHigh, txt, xloc = xloc.bar_time, color = lbcolor, style = label.style_label_down, textcolor = color.white, size = size.tiny)
+    array.push(strARR, typenew)
+    strSize                 := strSize + 1
+    strCandleHigh           := high
+    strCandleLow            := low
+    strCandleTime           := time
+    strCandleIndex          := bar_index
+    f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    if strBearish2
+        strCond := "Bullish"
+        typenew := structure.new("Low", strCandleLow, strCandleIndex, strCandleTime)
+        if strZIGZAGInput and array.size(strARR) > 0
+            typelast            = array.last(strARR)
+            x1                  = typelast.pivottime
+            y1                  = typelast.pivot
+            typenew.lnzigzag    := line.new(x1, y1, strCandleTime, strCandleLow, xloc = xloc.bar_time, extend = extend.none, color = strzigzagCOLORInput, style = f_linestyle(strzigzagSTYLEInput), width = strzigzagWIDTHInput)
+        if strpivotSTYLEInput != "None"
+            txt                 = strpivotSTYLEInput == "Label" ? "L" : "🔴"
+            lbcolor             = strpivotSTYLEInput == "Label" ? color.red : color.new(color.white, 100)
+            typenew.lbpivot     := label.new(strCandleTime, strCandleLow, txt, xloc = xloc.bar_time, color = lbcolor, style = label.style_label_up, textcolor = color.white, size = size.tiny)
+        array.push(strARR, typenew)
+        strSize := strSize + 1
+        x1      = strCandleTime
+        y1      = strCandleLow
+        line.set_xy1(strZigzagLine, x1, y1)
+        line.set_xy2(strZigzagLine, strCandleTime, strCandleHigh)
+        strPivLowest        := strCandleLow
+        strPivLowestIndex   := strCandleIndex
+        strPivLowestTime    := strCandleTime
+
+// => Major Lines
+var string  mjDir           = ""
+var float   mjHHVal         = na
+var int     mjHHInd         = na
+var float   mjLLVal         = na
+var int     mjLLInd         = na
+var line    mjHighLine      = line.new(na, na, na, na, xloc = xloc.bar_index, extend = extend.none, color = mjlineNHCOLORInput,  style = f_linestyle(mjlineNHSTYLEInput),  width = mjlineNHWIDTHInput)
+var line    mjLowLine       = line.new(na, na, na, na, xloc = xloc.bar_index, extend = extend.none, color = mjlineNLCOLORInput,  style = f_linestyle(mjlineNLSTYLEInput),  width = mjlineNLWIDTHInput)
+var bool    mjHighLineBr    = false
+var bool    mjLowLineBr     = false
+var int     mjHighLineBrInd = na
+var int     mjLowLineBrInd  = na
+
+var major[] mjARR           = array.new<major>()
+
+mjLong        = false
+mjShort       = false
+mjHH          = false
+mjLL          = false
+
+if mjDir == "" and array.size(strARR) > 0
+    if array.size(strARR) != array.size(strARR[1])
+        typenew = array.last(strARR)
+        cond    = typenew.cond
+        if cond == "High" and na(mjHHVal)
+            mjHHVal         := typenew.pivot
+            mjHHInd         := typenew.pivotindex
+            mjHighLineBr    := false
+            majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+            array.push(mjARR, majornew)
+            f_zigzagmaj(mjARR)
+        if cond == "Low" and na(mjLLVal)
+            mjLLVal         := typenew.pivot
+            mjLLInd         := typenew.pivotindex
+            mjLowLineBr     := false
+            majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+            array.push(mjARR, majornew)
+            f_zigzagmaj(mjARR)
+    if na(mjHHVal) == false and high > mjHHVal
+        [lowestval, lowestind] = f_lowest(mjHHInd)
+        mjDir           := "Long"
+        mjHighLineBr    := true
+        mjHighLineBrInd := bar_index
+        mjLong          := true
+        mjLLVal         := lowestval
+        mjLLInd         := lowestind
+        if mjlineBLbInput
+            mjHighLine   := line.new(time[bar_index - mjHHInd], mjHHVal, time, mjHHVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineBLCOLORInput,  style = f_linestyle(mjlineBLSTYLEInput),  width = mjlineBLWIDTHInput)
+        majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+    if na(mjLLVal) == false and low < mjLLVal
+        [highestval, highestind] = f_highest(mjLLInd)
+        mjDir           := "Short"
+        mjLowLineBr     := true
+        mjLowLineBrInd  := bar_index
+        mjShort         := true
+        mjHHVal         := highestval
+        mjHHInd         := highestind
+        if mjlineBHbInput
+            mjLowLine   := line.new(time[bar_index - mjLLInd], mjLLVal, time, mjLLVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineBHCOLORInput,  style = f_linestyle(mjlineBHSTYLEInput),  width = mjlineBHWIDTHInput)
+        majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+
+if mjDir == "Short"
+    newpivot = false
+    if mjLowLineBr and strSize != strSize[2]
+        sizecur = array.size(strARR)
+        sizepre = array.size(strARR[1])
+        if true
+            typenew = array.last(strARR)
+            if  typenew.cond == "Low" and typenew.pivotindex >= mjLowLineBrInd
+                mjLLVal         := typenew.pivot
+                mjLLInd         := typenew.pivotindex
+                mjLowLineBr     := false
+                newpivot        := true
+                majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+        if (sizecur - sizepre) == 2
+            typelast    = array.last(strARR)
+            typepre     = array.get(strARR, array.size(strARR) - 2)
+            if (typelast.cond == "Low" and typelast.pivotindex >= mjLowLineBrInd) or (typepre.cond == "Low" and typepre.pivotindex >= mjLowLineBrInd)
+                typel       = typelast.cond == "Low" ? typelast : typepre
+                mjLLVal     := typel.pivot
+                mjLLInd     := typel.pivotindex
+                mjLowLineBr := false
+                newpivot    := true
+                majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+    if mjLowLineBr == false and low < mjLLVal
+        [highestval, highestind] = f_highest(mjLLInd)
+        mjLowLineBr     := true
+        mjHighLineBr    := false
+        mjLL            := true
+        mjLowLineBrInd  := bar_index
+        mjHHVal         := highestval
+        mjHHInd         := highestind
+        if mjlineNLbInput
+            mjLowLine   := line.new(time[bar_index - mjLLInd], mjLLVal, time, mjLLVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineNLCOLORInput,  style = f_linestyle(mjlineNLSTYLEInput),  width = mjlineNLWIDTHInput)
+        majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+    else if mjHighLineBr == false and high > mjHHVal
+        [lowestval, lowestind] = f_lowest(mjHHInd)
+        mjDir           := "Long"
+        mjHighLineBr    := true
+        mjHighLineBrInd := bar_index
+        mjLowLineBr     := false
+        mjLong          := true
+        mjLLVal         := lowestval
+        mjLLInd         := lowestind
+        if mjlineBLbInput
+            mjHighLine   := line.new(time[bar_index - mjHHInd], mjHHVal, time, mjHHVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineBLCOLORInput,  style = f_linestyle(mjlineBLSTYLEInput),  width = mjlineBLWIDTHInput)
+        majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+    if newpivot == false and mjLowLineBr and array.size(strARR) != array.size(strARR[1])
+        sizecur = array.size(strARR)
+        sizepre = array.size(strARR[1])
+        if (sizecur - sizepre) == 1
+            typenew = array.last(strARR)
+            if typenew.cond == "Low" and typenew.pivotindex >= mjLowLineBrInd
+                mjLLVal         := typenew.pivot
+                mjLLInd         := typenew.pivotindex
+                mjLowLineBr     := false
+                majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+        if (sizecur - sizepre) == 2
+            typelast    = array.last(strARR)
+            typepre     = array.get(strARR, array.size(strARR) - 2)
+            if (typelast.cond == "Low" and typelast.pivotindex >= mjLowLineBrInd) or (typepre.cond == "Low" and typepre.pivotindex >= mjLowLineBrInd)
+                typel       = typelast.cond == "Low" ? typelast : typepre
+                mjLLVal     := typel.pivot
+                mjLLInd     := typel.pivotindex
+                mjLowLineBr := false
+                majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+
+if mjDir == "Long"
+    newpivot = false
+    if mjHighLineBr and array.size(strARR) != array.size(strARR[1])
+        sizecur = array.size(strARR)
+        sizepre = array.size(strARR[1])
+        if (sizecur - sizepre) == 1
+            typenew = array.last(strARR)
+            if typenew.cond == "High" and typenew.pivotindex >= mjHighLineBrInd
+                mjHHVal         := typenew.pivot
+                mjHHInd         := typenew.pivotindex
+                mjHighLineBr    := false
+                newpivot        := true
+                majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+        if (sizecur - sizepre) == 2
+            typelast        = array.last(strARR)
+            typepre         = array.get(strARR, array.size(strARR) - 2)
+            if (typelast.cond == "High" and typelast.pivotindex >= mjHighLineBrInd) or (typepre.cond == "High" and typepre.pivotindex >= mjHighLineBrInd)
+                typeh           = typelast.cond == "High" ? typelast : typepre
+                mjHHVal         := typeh.pivot
+                mjHHInd         := typeh.pivotindex
+                mjHighLineBr    := false
+                newpivot        := true
+                majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+    if mjHighLineBr == false and high > mjHHVal
+        [lowestval, lowestind] = f_lowest(mjHHInd)
+        mjHighLineBr    := true
+        mjLowLineBr     := false
+        mjHH            := true
+        mjHighLineBrInd := bar_index
+        mjLLVal         := lowestval
+        mjLLInd         := lowestind
+        if mjlineNHbInput
+            mjHighLine   := line.new(time[bar_index - mjHHInd], mjHHVal, time, mjHHVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineNHCOLORInput,  style = f_linestyle(mjlineNHSTYLEInput),  width = mjlineNHWIDTHInput)
+        majornew = major.new("Low", mjLLVal, mjLLInd, time[bar_index - mjLLInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+    else if mjLowLineBr == false and low < mjLLVal
+        [highestval, highestind] = f_highest(mjLLInd)
+        mjDir           := "Short"
+        mjLowLineBr     := true
+        mjHighLineBr    := false
+        mjShort         := true
+        mjLowLineBrInd  := bar_index
+        mjHHVal         := highestval
+        mjHHInd         := highestind
+        if mjlineBHbInput
+            mjLowLine   := line.new(time[bar_index - mjLLInd], mjLLVal, time, mjLLVal, xloc = xloc.bar_time, extend = extend.none, color = mjlineBHCOLORInput,  style = f_linestyle(mjlineBHSTYLEInput),  width = mjlineBHWIDTHInput)
+        majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+        array.push(mjARR, majornew)
+        f_zigzagmaj(mjARR)
+    if newpivot == false and mjHighLineBr and array.size(strARR) != array.size(strARR[1])
+        sizecur = array.size(strARR)
+        sizepre = array.size(strARR[1])
+        if (sizecur - sizepre) == 1
+            typenew = array.last(strARR)
+            if typenew.cond == "High" and typenew.pivotindex >= mjHighLineBrInd
+                mjHHVal         := typenew.pivot
+                mjHHInd         := typenew.pivotindex
+                mjHighLineBr    := false
+                majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+        if (sizecur - sizepre) == 2
+            typelast        = array.last(strARR)
+            typepre         = array.get(strARR, array.size(strARR) - 2)
+            if (typelast.cond == "High" and typelast.pivotindex >= mjHighLineBrInd) or (typepre.cond == "High" and typepre.pivotindex >= mjHighLineBrInd)
+                typeh           = typelast.cond == "High" ? typelast : typepre
+                mjHHVal         := typeh.pivot
+                mjHHInd         := typeh.pivotindex
+                mjHighLineBr    := false
+                majornew = major.new("High", mjHHVal, mjHHInd, time[bar_index - mjHHInd])
+                array.push(mjARR, majornew)
+                f_zigzagmaj(mjARR)
+
+// => BOS Kalite Tespiti ve Kutu Cizimi
+// MSS (trend donusu) → sayaclar sifirlanir
+// Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
+qualityBOSDetected = false
+
+// MSS: Trend donusu — sayaclari sifirla
+if mjLong or mjShort
+    rawBOSCount     := 0
+    qualityBOSCount := 0
+
+// Devam BOS'lari say (HH veya LL)
+if mjHH or mjLL
+    rawBOSCount += 1
+
+// Kaliteli BOS: Devam BOS + LTF likidite onayi
+if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF
+    qualityBOSCount += 1
+    qualityBOSDetected := true
+    ltfBullReady := false
+    boxL = time[bar_index - mjLLInd]
+    box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
+    label.new(int((boxL + time) / 2), mjHHVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_down, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+
+if mjLL and ltfBearReady and bosBoxEnableInput and supportedTF
+    qualityBOSCount += 1
+    qualityBOSDetected := true
+    ltfBearReady := false
+    boxL = time[bar_index - mjHHInd]
+    box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
+    label.new(int((boxL + time) / 2), mjLLVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_up, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+
+// => Alerts
+alertcondition(strBearish, "New H")
+alertcondition(strBullish, "New L")
+alertcondition(strBearish2, "New H and L")
+alertcondition(strBullish2, "New L and H")
+alertcondition(mjLong, "Major Long")
+alertcondition(mjShort, "Major Short")
+alertcondition(qualityBOSDetected and qualityBOSCount == bosAlertCountInput, "Kaliteli BOS Limit")
+
+if alertmjLONGbInput and mjLong
+    alert(alertmjlongMSGInput, alert.freq_once_per_bar)
+if alertmjSHORTbInput and mjShort
+    alert(alertmjshortMSGInput, alert.freq_once_per_bar)
+if bosAlertEnableInput and qualityBOSDetected and qualityBOSCount == bosAlertCountInput
+    alert(bosAlertMsgInput, alert.freq_once_per_bar)
+
+size = array.size(strARR)
+if(size>0 and not strzigzagShowUnConfirmedInput)
+    item = array.get(strARR,size-1)
+    line.set_color(item.lnzigzag,strzigzagCOLORInput)
+    line.set_color(strZigzagLine,na)
+
+// => Dashboard Tablosu
+if bosDashEnableInput
+    dashPos = switch bosDashPosInput
+        "Sag Ust" => position.top_right
+        "Sol Ust" => position.top_left
+        "Sag Alt" => position.bottom_right
+        "Sol Alt" => position.bottom_left
+    var table dash = table.new(position.top_right, 2, 4, bgcolor = color.new(#333333, 0), border_width = 1, border_color = color.new(#555555, 0))
+    if barstate.islast
+        // Tablo pozisyonunu guncelle
+        table.set_position(dash, dashPos)
+        // Satir 0: Ana Trend
+        trendText  = mjDir == "Long" ? "BULL (HTF)" : mjDir == "Short" ? "BEAR (HTF)" : "---"
+        trendColor = mjDir == "Long" ? color.green : mjDir == "Short" ? color.red : color.gray
+        table.cell(dash, 0, 0, "Ana Trend",         text_color = color.white,  text_size = size.small, bgcolor = color.new(#444444, 0))
+        table.cell(dash, 1, 0, trendText,            text_color = trendColor,   text_size = size.small, bgcolor = color.new(#333333, 0))
+        // Satir 1: Ham HTF BOS Sayisi
+        table.cell(dash, 0, 1, "Ham HTF BOS Sayisi", text_color = color.yellow, text_size = size.small, bgcolor = color.new(#444444, 0))
+        table.cell(dash, 1, 1, str.tostring(rawBOSCount), text_color = color.yellow, text_size = size.normal, bgcolor = color.new(#333333, 0))
+        // Satir 2: Kaliteli HTF BOS
+        table.cell(dash, 0, 2, "KALITELI HTF BOS",   text_color = color.white,  text_size = size.small, bgcolor = color.new(#444444, 0))
+        table.cell(dash, 1, 2, str.tostring(qualityBOSCount), text_color = color.red, text_size = size.normal, bgcolor = color.new(#333333, 0))
+        // Satir 3: Motor Baglantisi
+        ltfLabel = lowerTF == timeframe.period ? "---" : lowerTF
+        htfLabel = timeframe.period
+        table.cell(dash, 0, 3, "Motor Baglantisi",   text_color = color.gray,   text_size = size.small, bgcolor = color.new(#444444, 0))
+        table.cell(dash, 1, 3, "LTF: " + ltfLabel + " | HTF: " + htfLabel, text_color = color.new(#90CAF9, 0), text_size = size.small, bgcolor = color.new(#333333, 0))
