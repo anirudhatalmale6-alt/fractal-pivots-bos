@@ -207,8 +207,8 @@ f_zigzagmaj(_mjarr) =>
 // Bu sayede kucuk salinimlari filtreler ve sadece anlamli yapisal degisiklikleri yakalar
 f_ltfDetect() =>
     // N-bar onaylanmis pivotlar — her iki tarafta N bar gerektir
-    // N=5: 1M'de 5 dakika oncesi + 5 dakika sonrasi = anlamli swing noktasi
-    N = 5
+    // N=3: 1M'de 3 dakika oncesi + 3 dakika sonrasi = anlamli swing noktasi
+    N = 3
     pH = ta.pivothigh(high, N, N)
     pL = ta.pivotlow(low, N, N)
     // Son onaylanmis pivot seviyeleri
@@ -339,44 +339,22 @@ if not na(ltfBullCnt)
 if not na(ltfBearCnt)
     prevLtfBearCnt := ltfBearCnt
 
-// LTF sinyal bayraklari — iki asamali: likidite oncusu + MSS
-// Kaliteli BOS icin 1M'de: once likidite alinir (ters yone MSS), sonra kirilim gelir (geri MSS)
-// Ornek bearish kaliteli: once Bull MSS (likidite yukari), sonra Bear MSS (kirilim asagi)
+// v35: LTF sinyal bayraklari — tek adim: MSS = kaliteli hazir
+// 1M majör yapisinda MSS = likidite alip kirilim yapmis demek (tek olay iki anlam tasiyor)
+// Ornek: 1M Short→Long MSS = fiyat swing low altina girdi (likidite) + swing high uzerine cikti (kirilim)
 var bool ltfBullReady = false
 var bool ltfBearReady = false
 var int ltfBullReadyBar = 0
 var int ltfBearReadyBar = 0
-// Likidite oncusu bayraklari
-var bool ltfBullPrecursor = false  // Bull MSS oldu (bearish kaliteli icin likidite oncusu)
-var bool ltfBearPrecursor = false  // Bear MSS oldu (bullish kaliteli icin likidite oncusu)
-var int ltfBullPrecursorBar = 0
-var int ltfBearPrecursorBar = 0
 
+// Her MSS dogrudan kaliteli hazir bayragi acar
 if ltfBullSignal
-    // Bull MSS = likidite yukari alindi (bearish kaliteli icin oncu)
-    ltfBullPrecursor := true
-    ltfBullPrecursorBar := bar_index
-    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    // Minimum 1 bar aralik — sadece ayni barda olan gurultu filtrele
-    // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 1
-        ltfBullReady := true
-        ltfBullReadyBar := bar_index
-        ltfBearPrecursor := false
+    ltfBullReady := true
+    ltfBullReadyBar := bar_index
 if ltfBearSignal
-    // Bear MSS = likidite asagi alindi (bullish kaliteli icin oncu)
-    ltfBearPrecursor := true
-    ltfBearPrecursorBar := bar_index
-    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    // Minimum 1 bar aralik — sadece ayni barda olan gurultu filtrele
-    // Oncu zaman asimi YOK — uzun sureli trendler icin oncu kalici
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 1
-        ltfBearReady := true
-        ltfBearReadyBar := bar_index
-        ltfBullPrecursor := false
-// Zaman asimi — kaliteli hazir bayraklari (50 HTF bar = ~4 saat @ 5M)
-// Uzun sureli hareketlerde 1M MSS ile 5M BOS arasi cok fark olabiliyor
-// Onculer zaman asimina tabi DEGIL — HTF trend degisiminde sifirlanir
+    ltfBearReady := true
+    ltfBearReadyBar := bar_index
+// Zaman asimi — 50 HTF bar (~4 saat @ 5M)
 if ltfBullReady and bar_index - ltfBullReadyBar > 50
     ltfBullReady := false
 if ltfBearReady and bar_index - ltfBearReadyBar > 50
@@ -837,8 +815,6 @@ if mjLong or mjShort
     qualityBOSCount := 0
     ltfBullReady    := false
     ltfBearReady    := false
-    ltfBullPrecursor := false
-    ltfBearPrecursor := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
@@ -913,7 +889,6 @@ if bosDashEnableInput
         // Satir 4: Debug — LTF sinyal durumlari
         debugBull = str.tostring(not na(ltfBullCnt) ? ltfBullCnt : 0)
         debugBear = str.tostring(not na(ltfBearCnt) ? ltfBearCnt : 0)
-        debugPrec = (ltfBullPrecursor ? "BP" : "-") + " " + (ltfBearPrecursor ? "SP" : "-")
         debugReady = (ltfBullReady ? "BR" : "-") + " " + (ltfBearReady ? "SR" : "-")
         table.cell(dash, 0, 4, "DEBUG LTF",   text_color = color.orange,   text_size = size.tiny, bgcolor = color.new(#444444, 0))
-        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugPrec + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
+        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
