@@ -217,27 +217,33 @@ f_ltfDetect() =>
         ltfCL := low
         ltfCond := "First"
     if ltfCond == "First" and barstate.isconfirmed
-        if high > ltfCH
+        if high > ltfCH and close >= open
             ltfCond := "Bullish"
             ltfBull := true
-        if low < ltfCL
+        if low < ltfCL and close < open
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if low < ltfCL
-            if high > ltfCH
+        if high > ltfCH and low < ltfCL
+            if close < open
                 ltfCH := high
                 ltfCL := low
+            ltfCond := "Bearish"
+            ltfBear := true
+        else if low < ltfCL
             ltfCond := "Bearish"
             ltfBear := true
         else if high > ltfCH
             ltfCH := high
             ltfCL := low
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH
-            if low < ltfCL
+        if high > ltfCH and low < ltfCL
+            if close >= open
                 ltfCH := high
                 ltfCL := low
+            ltfCond := "Bullish"
+            ltfBull := true
+        else if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
         else if low < ltfCL
@@ -429,46 +435,61 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
         strPivHighestIndex  := bar_index
         strPivLowestIndex   := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+    // First Break
     if strCond == "First" and barstate.isconfirmed
-        if high > strCandleHigh
+        if high > strCandleHigh and close >= open
             strCond         := "Bullish"
             strBullish      := true
-        if low < strCandleLow
+        if low < strCandleLow and close < open
             strCond         := "Bearish"
             strBearish      := true
 
-// Bullish — devam: yeni HH, ters donus: LL kirilmasi (reversal once kontrol edilir)
+// Bullish
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    if low < strCandleLow
-        if high > strCandleHigh
-            // Outside bar — range guncelle, sonra reversal
+    // Outside bar — hem H hem L kirildi
+    if high > strCandleHigh and low < strCandleLow
+        // Mum rengi ne olursa olsun → tek reversal (cift pivot yok)
+        if close < open
+            // Kirmizi outside bar → range guncelle + reversal
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
+        // Yesil outside bar → range guncellemeden reversal (orjinal mantik)
         strCond         := "Bearish"
         strBearish      := true
+    // Sadece low kirildi → reversal
+    else if low < strCandleLow
+        strCond         := "Bearish"
+        strBearish      := true
+    // Sadece high kirildi → devam
     else if high > strCandleHigh
-        // Devam — yeni HH
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
         strCandleIndex  := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
 
-// Bearish — devam: yeni LL, ters donus: HH kirilmasi (reversal once kontrol edilir)
+// Bearish
 if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    if high > strCandleHigh
-        if low < strCandleLow
-            // Outside bar — range guncelle, sonra reversal
+    // Outside bar — hem H hem L kirildi
+    if high > strCandleHigh and low < strCandleLow
+        // Mum rengi ne olursa olsun → tek reversal (cift pivot yok)
+        if close >= open
+            // Yesil outside bar → range guncelle + reversal
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
+        // Kirmizi outside bar → range guncellemeden reversal (orjinal mantik)
         strCond         := "Bullish"
         strBullish      := true
+    // Sadece high kirildi → reversal
+    else if high > strCandleHigh
+        strCond         := "Bullish"
+        strBullish      := true
+    // Sadece low kirildi → devam
     else if low < strCandleLow
-        // Devam — yeni LL
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
