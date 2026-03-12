@@ -226,11 +226,11 @@ f_ltfDetect() =>
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
         if high > ltfCH and low < ltfCL
             if close >= open
-                ltfCond := "Bearish"
-                ltfBear := true
-            else
+                // Yesil outside + Bullish → devam
                 ltfCH := high
                 ltfCL := low
+            else
+                // Kirmizi outside + Bullish → Bearish
                 ltfCond := "Bearish"
                 ltfBear := true
         else if low < ltfCL
@@ -242,13 +242,13 @@ f_ltfDetect() =>
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
         if high > ltfCH and low < ltfCL
             if close >= open
-                ltfCH := high
-                ltfCL := low
+                // Yesil outside + Bearish → Bullish
                 ltfCond := "Bullish"
                 ltfBull := true
             else
-                ltfCond := "Bullish"
-                ltfBull := true
+                // Kirmizi outside + Bearish → devam
+                ltfCH := high
+                ltfCL := low
         else if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
@@ -451,14 +451,14 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
     if high > strCandleHigh and low < strCandleLow
         if close >= open
-            strCond         := "Bearish"
-            strBearish      := true
-            strBearish2     := true
-        else
+            // Yesil outside bar + Bullish → devam, aralik genislet
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
+            f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
+        else
+            // Kirmizi outside bar + Bullish → Bearish'e gec
             strCond         := "Bearish"
             strBearish      := true
     else if low < strCandleLow
@@ -475,16 +475,16 @@ if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
 if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
     if high > strCandleHigh and low < strCandleLow
         if close >= open
+            // Yesil outside bar + Bearish → Bullish'e gec
+            strCond         := "Bullish"
+            strBullish      := true
+        else
+            // Kirmizi outside bar + Bearish → devam, aralik genislet
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
-            strCond         := "Bullish"
-            strBullish      := true
-        else
-            strCond         := "Bullish"
-            strBullish      := true
-            strBullish2     := true
+            f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
     else if high > strCandleHigh
         strCond         := "Bullish"
         strBullish      := true
