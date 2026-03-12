@@ -202,21 +202,70 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu
+// => LTF Likidite Tespit Fonksiyonu (Fractal Pivot tabanli — ana indikatörle ayni mantik)
 f_ltfDetect() =>
-    // Swing tespiti: lookback 2 (duyarli)
-    ph = ta.pivothigh(high, 2, 2)
-    pl = ta.pivotlow(low, 2, 2)
+    // Fractal Pivot yapisi (ana indikatörle ayni algoritma)
+    var string ltfCond = ""
+    var float ltfCH = na
+    var float ltfCL = na
     var float swH = na
     var float swL = na
-    if not na(ph)
-        swH := ph
-    if not na(pl)
-        swL := pl
-    // Likidite surme: fiyat swing seviyesine dokunur veya gecer
+    ltfBull = false
+    ltfBear = false
+    if ltfCond == ""
+        ltfCH := high
+        ltfCL := low
+        ltfCond := "First"
+    if ltfCond == "First" and barstate.isconfirmed
+        if high > ltfCH and close >= open
+            ltfCond := "Bullish"
+            ltfBull := true
+        if low < ltfCL and close < open
+            ltfCond := "Bearish"
+            ltfBear := true
+    if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
+        if high > ltfCH and low < ltfCL
+            if close >= open
+                ltfCond := "Bearish"
+                ltfBear := true
+            else
+                ltfCH := high
+                ltfCL := low
+                ltfCond := "Bearish"
+                ltfBear := true
+        else if low < ltfCL
+            ltfCond := "Bearish"
+            ltfBear := true
+        else if high > ltfCH
+            ltfCH := high
+            ltfCL := low
+    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
+        if high > ltfCH and low < ltfCL
+            if close >= open
+                ltfCH := high
+                ltfCL := low
+                ltfCond := "Bullish"
+                ltfBull := true
+            else
+                ltfCond := "Bullish"
+                ltfBull := true
+        else if high > ltfCH
+            ltfCond := "Bullish"
+            ltfBull := true
+        else if low < ltfCL
+            ltfCH := high
+            ltfCL := low
+    // Swing seviyeleri guncelle (fractal pivot gibi)
+    if ltfBear
+        swH := ltfCH    // yukselen mumun high'i swing high olur
+    if ltfBull
+        swL := ltfCL    // dusen mumun low'u swing low olur
+    if ltfBull or ltfBear
+        ltfCH := high
+        ltfCL := low
+    // Likidite surme tespiti
     bullSweep = not na(swL) and low <= swL
     bearSweep = not na(swH) and high >= swH
-    // Bekleyen likidite surmeleri (BAGIMSIZ — birbirini iptal etmez)
     var bool bullLiqPending = false
     var bool bearLiqPending = false
     var int bullSweepBar = 0
@@ -227,23 +276,21 @@ f_ltfDetect() =>
     if bearSweep
         bearLiqPending := true
         bearSweepBar := bar_index
-    // LTF BOS: likidite aldiktan sonra ters yone kirilim
-    bullLiqBOS = bullLiqPending and not na(swH) and close > swH
-    bearLiqBOS = bearLiqPending and not na(swL) and close < swL
+    // LTF BOS: likidite sonrasi yapi kirimi (fractal degisimi)
+    bullLiqBOS = bullLiqPending and ltfBull
+    bearLiqBOS = bearLiqPending and ltfBear
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
     if bullLiqBOS
         bullSignalCnt += 1
         bullLiqPending := false
-        // bearLiqPending SIFIRLANMAZ — bagimsiz calisir
     if bearLiqBOS
         bearSignalCnt += 1
         bearLiqPending := false
-        // bullLiqPending SIFIRLANMAZ — bagimsiz calisir
-    // Zaman asimi (60 LTF bar)
-    if bullLiqPending and bar_index - bullSweepBar > 60
+    // Zaman asimi (80 LTF bar)
+    if bullLiqPending and bar_index - bullSweepBar > 80
         bullLiqPending := false
-    if bearLiqPending and bar_index - bearSweepBar > 60
+    if bearLiqPending and bar_index - bearSweepBar > 80
         bearLiqPending := false
     [bullSignalCnt, bearSignalCnt]
 
