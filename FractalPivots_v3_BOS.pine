@@ -273,10 +273,13 @@ f_ltfDetect() =>
     var float mLL = na
     var bool mHBr = false
     var bool mLBr = false
-    var int mContCount = 0  // devam sayaci — likidite alinimi dogrulamak icin
+    var int mPivotCount = 0  // minör pivot sayaci — trend olgunlugu icin
     // Sadece MSS (trend donusu) sinyalleri — devam BOS sayilmaz
     mBullMSS = false
     mBearMSS = false
+    // Minör pivot sayacini guncelle (her minor yapisal degisimde artir)
+    if (ltfBull or ltfBear) and mDir != ""
+        mPivotCount += 1
     // Ilk major seviyeleri fractal pivotlardan al
     if mDir == ""
         if not na(fracH) and na(mHH)
@@ -286,14 +289,14 @@ f_ltfDetect() =>
         if not na(mHH) and high > mHH
             mDir := "Long"
             mHBr := true
-            mContCount := 0
+            mPivotCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
         if mDir == "" and not na(mLL) and low < mLL
             mDir := "Short"
             mLBr := true
-            mContCount := 0
+            mPivotCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -307,9 +310,8 @@ f_ltfDetect() =>
             if ltfBear and not na(fracH) and fracH > mHH
                 mHH := fracH
         if not mHBr and high > mHH
-            // HH devam — likidite alimi (sayaci artir)
+            // HH devam
             mHBr := true
-            mContCount += 1
             if not na(fracL)
                 mLL := fracL
             mLBr := false
@@ -318,12 +320,12 @@ f_ltfDetect() =>
                 mLL := fracL
                 mLBr := false
         if not mLBr and not na(mLL) and low < mLL
-            // Long → Short: sadece likidite alinmissa (en az 1 HH devam) MSS say
+            // Long → Short: en az 2 minör pivot olmussa = olgun trend, MSS say
             mDir := "Short"
-            if mContCount >= 1
+            if mPivotCount >= 2
                 mBearMSS := true
             mLBr := true
-            mContCount := 0
+            mPivotCount := 0
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -337,9 +339,8 @@ f_ltfDetect() =>
             if ltfBull and not na(fracL) and fracL < mLL
                 mLL := fracL
         if not mLBr and low < mLL
-            // LL devam — likidite alimi (sayaci artir)
+            // LL devam
             mLBr := true
-            mContCount += 1
             if not na(fracH)
                 mHH := fracH
             mHBr := false
@@ -348,12 +349,12 @@ f_ltfDetect() =>
                 mHH := fracH
                 mHBr := false
         if not mHBr and not na(mHH) and high > mHH
-            // Short → Long: sadece likidite alinmissa (en az 1 LL devam) MSS say
+            // Short → Long: en az 2 minör pivot olmussa = olgun trend, MSS say
             mDir := "Long"
-            if mContCount >= 1
+            if mPivotCount >= 2
                 mBullMSS := true
             mHBr := true
-            mContCount := 0
+            mPivotCount := 0
             if not na(fracL)
                 mLL := fracL
             mLBr := false
