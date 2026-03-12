@@ -267,14 +267,15 @@ f_ltfDetect() =>
     if ltfBull or ltfBear
         ltfCH := high
         ltfCL := low
-    // === MAJOR YAPI TESPITI (ana indikatörün turuncu zigzag mantigi) ===
+    // === MAJOR YAPI TESPITI — sadece MSS (trend donusu) say ===
     var string mDir = ""
     var float mHH = na
     var float mLL = na
     var bool mHBr = false
     var bool mLBr = false
-    mBullBOS = false
-    mBearBOS = false
+    // Sadece MSS (trend donusu) sinyalleri — devam BOS sayilmaz
+    mBullMSS = false
+    mBearMSS = false
     // Ilk major seviyeleri fractal pivotlardan al
     if mDir == ""
         if not na(fracH) and na(mHH)
@@ -283,19 +284,17 @@ f_ltfDetect() =>
             mLL := fracL
         if not na(mHH) and high > mHH
             mDir := "Long"
-            mBullBOS := true
             mHBr := true
             if not na(fracL)
                 mLL := fracL
             mLBr := false
         if mDir == "" and not na(mLL) and low < mLL
             mDir := "Short"
-            mBearBOS := true
             mLBr := true
             if not na(fracH)
                 mHH := fracH
             mHBr := false
-    // Long trend: HH devam, LL kirilimi = trend donusu
+    // Long trend: HH devam, LL kirilimi = trend donusu (MSS)
     if mDir == "Long"
         if mHBr
             if ltfBear and not na(fracH)
@@ -305,7 +304,7 @@ f_ltfDetect() =>
             if ltfBear and not na(fracH) and fracH > mHH
                 mHH := fracH
         if not mHBr and high > mHH
-            mBullBOS := true
+            // HH devam — MSS degil, sayma
             mHBr := true
             if not na(fracL)
                 mLL := fracL
@@ -315,13 +314,14 @@ f_ltfDetect() =>
                 mLL := fracL
                 mLBr := false
         if not mLBr and not na(mLL) and low < mLL
+            // Long → Short = Bearish MSS (likidite alip kirilim)
             mDir := "Short"
-            mBearBOS := true
+            mBearMSS := true
             mLBr := true
             if not na(fracH)
                 mHH := fracH
             mHBr := false
-    // Short trend: LL devam, HH kirilimi = trend donusu
+    // Short trend: LL devam, HH kirilimi = trend donusu (MSS)
     if mDir == "Short"
         if mLBr
             if ltfBull and not na(fracL)
@@ -331,7 +331,7 @@ f_ltfDetect() =>
             if ltfBull and not na(fracL) and fracL < mLL
                 mLL := fracL
         if not mLBr and low < mLL
-            mBearBOS := true
+            // LL devam — MSS degil, sayma
             mLBr := true
             if not na(fracH)
                 mHH := fracH
@@ -341,18 +341,19 @@ f_ltfDetect() =>
                 mHH := fracH
                 mHBr := false
         if not mHBr and not na(mHH) and high > mHH
+            // Short → Long = Bullish MSS (likidite alip kirilim)
             mDir := "Long"
-            mBullBOS := true
+            mBullMSS := true
             mHBr := true
             if not na(fracL)
                 mLL := fracL
             mLBr := false
-    // Major BOS sinyalleri say
+    // Sadece MSS sinyallerini say
     var int bullSignalCnt = 0
     var int bearSignalCnt = 0
-    if mBullBOS
+    if mBullMSS
         bullSignalCnt += 1
-    if mBearBOS
+    if mBearMSS
         bearSignalCnt += 1
     [bullSignalCnt, bearSignalCnt]
 
