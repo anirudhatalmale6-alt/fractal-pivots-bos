@@ -207,8 +207,8 @@ f_zigzagmaj(_mjarr) =>
 // Bu sayede kucuk salinimlari filtreler ve sadece anlamli yapisal degisiklikleri yakalar
 f_ltfDetect() =>
     // N-bar onaylanmis pivotlar — her iki tarafta N bar gerektir
-    // N=3: 1M'de 3 dakika oncesi + 3 dakika sonrasi = anlamli swing noktasi
-    N = 3
+    // N=2: 1M'de 2 dakika oncesi + 2 dakika sonrasi = anlamli swing noktasi
+    N = 2
     pH = ta.pivothigh(high, N, N)
     pL = ta.pivotlow(low, N, N)
     // Son onaylanmis pivot seviyeleri
@@ -354,10 +354,12 @@ if ltfBullSignal
 if ltfBearSignal
     ltfBearReady := true
     ltfBearReadyBar := bar_index
-// Zaman asimi — 50 HTF bar (~4 saat @ 5M)
-if ltfBullReady and bar_index - ltfBullReadyBar > 50
+// Zaman asimi — 15 HTF bar (~75 dk @ 5M)
+// Kisa timeout: kalite bayragi MSS'den sonra 15 bar icinde gecerli
+// Yeni MSS zamanlayiciyi yeniler — aktif piyasalarda bayrak sureklicacik kalir
+if ltfBullReady and bar_index - ltfBullReadyBar > 15
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 50
+if ltfBearReady and bar_index - ltfBearReadyBar > 15
     ltfBearReady := false
 
 // BOS Sayaclari
@@ -821,10 +823,12 @@ if mjHH or mjLL
     rawBOSCount += 1
 
 // Kaliteli BOS: Devam BOS + LTF likidite onayi
+// v36: Ready bayragi TUKETILMIYOR — ayni MSS birden fazla BOS'u kaliteli yapabilir
+// Bayrak sadece timeout (15 bar) veya trend degisiminde sifirlanir
+// Yeni LTF MSS zamanlayiciyi yeniler → aktif piyasada bayrak acik kalir
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
-    ltfBullReady := false
     boxL = time[bar_index - mjLLInd]
     box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
     label.new(int((boxL + time) / 2), mjHHVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_down, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
@@ -832,7 +836,6 @@ if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
 if mjLL and ltfBearReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
-    ltfBearReady := false
     boxL = time[bar_index - mjHHInd]
     box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
     label.new(int((boxL + time) / 2), mjLLVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_up, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
