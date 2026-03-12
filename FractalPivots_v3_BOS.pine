@@ -224,20 +224,32 @@ f_ltfDetect() =>
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if low < ltfCL
-            if high > ltfCH
+        if high > ltfCH and low < ltfCL
+            if close >= open
+                ltfCond := "Bearish"
+                ltfBear := true
+            else
                 ltfCH := high
                 ltfCL := low
+                ltfCond := "Bearish"
+                ltfBear := true
+        else if low < ltfCL
             ltfCond := "Bearish"
             ltfBear := true
         else if high > ltfCH
             ltfCH := high
             ltfCL := low
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if high > ltfCH
-            if low < ltfCL
+        if high > ltfCH and low < ltfCL
+            if close >= open
                 ltfCH := high
                 ltfCL := low
+                ltfCond := "Bullish"
+                ltfBull := true
+            else
+                ltfCond := "Bullish"
+                ltfBull := true
+        else if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
         else if low < ltfCL
@@ -440,17 +452,27 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
 
 // Bullish
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    if low < strCandleLow
-        // Reversal — outside bar ise range guncelle
-        if high > strCandleHigh
+    // if Outsider high and low is broken at the same time
+    if high > strCandleHigh and low < strCandleLow
+        // If candle is green, low to high
+        if close >= open
+            strCond         := "Bearish"
+            strBearish      := true
+            strBearish2     := true
+        // If candle is red, High to low
+        else
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
+            strCond         := "Bearish"
+            strBearish      := true
+    // Outsider is broken
+    else if low < strCandleLow
         strCond         := "Bearish"
         strBearish      := true
+    // New outsider
     else if high > strCandleHigh
-        // Devam — yeni HH
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
@@ -459,17 +481,27 @@ if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
 
 // Bearish
 if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    if high > strCandleHigh
-        // Reversal — outside bar ise range guncelle
-        if low < strCandleLow
+    // if Outsider high and low is broken at the same time
+    if high > strCandleHigh and low < strCandleLow
+        // If candle is green, low to high
+        if close >= open
             strCandleHigh   := high
             strCandleLow    := low
             strCandleTime   := time
             strCandleIndex  := bar_index
+            strCond         := "Bullish"
+            strBullish      := true
+        // If candle is red, High to low
+        else
+            strCond         := "Bullish"
+            strBullish      := true
+            strBullish2     := true
+    // Outsider is broken
+    else if high > strCandleHigh
         strCond         := "Bullish"
         strBullish      := true
+    // New outsider
     else if low < strCandleLow
-        // Devam — yeni LL
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
