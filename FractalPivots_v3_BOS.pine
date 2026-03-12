@@ -217,30 +217,32 @@ f_ltfDetect() =>
         ltfCL := low
         ltfCond := "First"
     if ltfCond == "First" and barstate.isconfirmed
-        if high > ltfCH and close >= open
+        if high > ltfCH
             ltfCond := "Bullish"
             ltfBull := true
-        if low < ltfCL and close < open
+        if low < ltfCL
             ltfCond := "Bearish"
             ltfBear := true
     if ltfCond == "Bullish" and ltfBull == false and barstate.isconfirmed
-        if high > ltfCH and close >= open
-            // Yesil mum + yeni yuksek → devam
-            ltfCH := high
-            ltfCL := low
-        else if not na(swL) and low < swL and close < open
-            // Kirmizi mum + SWING LOW kirildi → Bearish (yapi kirimi)
+        if low < ltfCL
+            if high > ltfCH
+                ltfCH := high
+                ltfCL := low
             ltfCond := "Bearish"
             ltfBear := true
-    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
-        if low < ltfCL and close < open
-            // Kirmizi mum + yeni dusuk → devam
+        else if high > ltfCH
             ltfCH := high
             ltfCL := low
-        else if not na(swH) and high > swH and close >= open
-            // Yesil mum + SWING HIGH kirildi → Bullish (yapi kirimi)
+    if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
+        if high > ltfCH
+            if low < ltfCL
+                ltfCH := high
+                ltfCL := low
             ltfCond := "Bullish"
             ltfBull := true
+        else if low < ltfCL
+            ltfCH := high
+            ltfCL := low
     // Fractal pivot seviyeleri (swing high/low) — reset oncesi yakala
     var float fracH = na
     var float fracL = na
@@ -428,40 +430,50 @@ if (strtimeACTIVEbInput ? time >= strTIMEInput : true)
         strPivLowestIndex   := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
     if strCond == "First" and barstate.isconfirmed
-        if high > strCandleHigh and close >= open
+        if high > strCandleHigh
             strCond         := "Bullish"
             strBullish      := true
-        if low < strCandleLow and close < open
+        if low < strCandleLow
             strCond         := "Bearish"
             strBearish      := true
 
-// Bullish — devam: yeni HH, ters donus: SWING LOW kirilmasi gerekir (yapi kirimi)
+// Bullish — devam: yeni HH, ters donus: LL kirilmasi (reversal once kontrol edilir)
 if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
-    if high > strCandleHigh and close >= open
-        // Yesil mum + yeni yuksek → devam
-        strCandleHigh   := high
-        strCandleLow    := low
-        strCandleTime   := time
-        strCandleIndex  := bar_index
-        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
-    else if not na(strPivLowest) and low < strPivLowest and close < open
-        // Kirmizi mum + SWING LOW kirildi → Bearish'e gec (yapi kirimi)
+    if low < strCandleLow
+        if high > strCandleHigh
+            // Outside bar — range guncelle, sonra reversal
+            strCandleHigh   := high
+            strCandleLow    := low
+            strCandleTime   := time
+            strCandleIndex  := bar_index
         strCond         := "Bearish"
         strBearish      := true
-
-// Bearish — devam: yeni LL, ters donus: SWING HIGH kirilmasi gerekir (yapi kirimi)
-if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
-    if low < strCandleLow and close < open
-        // Kirmizi mum + yeni dusuk → devam
+    else if high > strCandleHigh
+        // Devam — yeni HH
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
         strCandleIndex  := bar_index
         f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
-    else if not na(strPivHighest) and high > strPivHighest and close >= open
-        // Yesil mum + SWING HIGH kirildi → Bullish'e gec (yapi kirimi)
+
+// Bearish — devam: yeni LL, ters donus: HH kirilmasi (reversal once kontrol edilir)
+if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
+    if high > strCandleHigh
+        if low < strCandleLow
+            // Outside bar — range guncelle, sonra reversal
+            strCandleHigh   := high
+            strCandleLow    := low
+            strCandleTime   := time
+            strCandleIndex  := bar_index
         strCond         := "Bullish"
         strBullish      := true
+    else if low < strCandleLow
+        // Devam — yeni LL
+        strCandleHigh   := high
+        strCandleLow    := low
+        strCandleTime   := time
+        strCandleIndex  := bar_index
+        f_breakline(strHighLine, strLowLine, strCandleIndex, strCandleIndex + 1, strCandleHigh, strCandleLow)
 
 if strBearish
     strPivHighest       := strCandleHigh
