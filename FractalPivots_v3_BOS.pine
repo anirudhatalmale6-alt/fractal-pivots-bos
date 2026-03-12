@@ -230,7 +230,7 @@ f_ltfDetect() =>
                 ltfCL := low
             ltfCond := "Bearish"
             ltfBear := true
-        else if high > ltfCH
+        else if high > ltfCH and close >= open
             ltfCH := high
             ltfCL := low
     if ltfCond == "Bearish" and ltfBear == false and barstate.isconfirmed
@@ -240,7 +240,7 @@ f_ltfDetect() =>
                 ltfCL := low
             ltfCond := "Bullish"
             ltfBull := true
-        else if low < ltfCL
+        else if low < ltfCL and close < open
             ltfCH := high
             ltfCL := low
     // Fractal pivot seviyeleri (swing high/low) — reset oncesi yakala
@@ -449,8 +449,8 @@ if strCond == "Bullish" and strBullish == false and barstate.isconfirmed
             strCandleIndex  := bar_index
         strCond         := "Bearish"
         strBearish      := true
-    else if high > strCandleHigh
-        // Devam — yeni HH
+    else if high > strCandleHigh and close >= open
+        // Devam — yeni HH (sadece yesil mum)
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
@@ -468,8 +468,8 @@ if strCond == "Bearish" and strBearish == false and barstate.isconfirmed
             strCandleIndex  := bar_index
         strCond         := "Bullish"
         strBullish      := true
-    else if low < strCandleLow
-        // Devam — yeni LL
+    else if low < strCandleLow and close < open
+        // Devam — yeni LL (sadece kirmizi mum)
         strCandleHigh   := high
         strCandleLow    := low
         strCandleTime   := time
