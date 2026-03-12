@@ -262,6 +262,8 @@ lowerTF = switch timeframe.period
     "60"  => "15"
     => timeframe.period
 supportedTF = (timeframe.period == "1S" or timeframe.period == "5S" or timeframe.period == "15S" or timeframe.period == "30S" or timeframe.period == "1" or timeframe.period == "5" or timeframe.period == "15" or timeframe.period == "60")
+// Gercek alt zaman dilimi var mi? (1S icin LTF=HTF, kalite BOS devre disi)
+hasRealLTF = lowerTF != timeframe.period
 
 // => LTF Sinyal Alma (request.security)
 [ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
@@ -738,7 +740,7 @@ if mjHH or mjLL
     rawBOSCount += 1
 
 // Kaliteli BOS: Devam BOS + LTF likidite onayi
-if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF
+if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
     ltfBullReady := false
@@ -746,7 +748,7 @@ if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF
     box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
     label.new(int((boxL + time) / 2), mjHHVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_down, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
 
-if mjLL and ltfBearReady and bosBoxEnableInput and supportedTF
+if mjLL and ltfBearReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
     ltfBearReady := false
