@@ -202,7 +202,7 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v43)
+// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v44)
 // 1M major MSS tespiti: Bull MSS ve Bear MSS ayri sayaclar
 // Donus: [bullSignalCnt, bearSignalCnt]
 f_ltfDetect() =>
@@ -376,7 +376,7 @@ supportedTF = (timeframe.period == "1S" or timeframe.period == "5S" or timeframe
 hasRealLTF = lowerTF != timeframe.period
 
 // => LTF Sinyal Alma (request.security)
-// v43: 1010.txt mantigi — iki asamali oncu sistemi (>= 1 orijinal, tuketim + sifirlama)
+// v44: 1010.txt mantigi + pending BOS mekanizmasi (5 bar gecikme toleransi)
 [ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
 var int prevLtfBullCnt = 0
 var int prevLtfBearCnt = 0
@@ -868,12 +868,27 @@ if mjDir == "Long"
                 f_zigzagmaj(mjARR)
 
 // => BOS Kalite Tespiti ve Kutu Cizimi
-// MSS (trend donusu) → sayaclar sifirlanir
-// Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
+// v44: Pending BOS mekanizmasi — BOS ile LTF ready farklı barlarda olabilir
+// BOS once gelirse "pending" olarak saklanir, ready 5 bar icinde gelirse kaliteli sayilir
 qualityBOSDetected = false
 
+// Pending BOS degiskenleri (BOS oldu ama ready yoktu, bekliyor)
+var bool pendHH = false
+var bool pendLL = false
+var int pendHHBar = 0
+var int pendLLBar = 0
+var float pendHHVal = na
+var float pendLLVal = na
+var int pendHHInd = na
+var int pendLLInd = na
+var float pendHH_LLVal = na   // HH anindaki LL degeri (kutu icin)
+var int pendHH_LLInd = na
+var float pendLL_HHVal = na   // LL anindaki HH degeri (kutu icin)
+var int pendLL_HHInd = na
+var int pendHH_time = na      // HH anindaki zaman (kutu sag kenari)
+var int pendLL_time = na
+
 // MSS: Trend donusu — sayaclari ve LTF bayraklari sifirla
-// Kaliteli BOS icin MSS SONRASI taze LTF sinyali gerekli
 if mjLong or mjShort
     rawBOSCount      := 0
     qualityBOSCount  := 0
@@ -881,28 +896,74 @@ if mjLong or mjShort
     ltfBearReady     := false
     ltfBullPrecursor := false
     ltfBearPrecursor := false
+    pendHH           := false
+    pendLL           := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
     rawBOSCount += 1
 
-// v43: Kaliteli BOS = devam BOS + LTF likidite onayi (1010.txt mantigi)
-// Ready bayragi kullanildiktan sonra tuketilir (consumption)
+// --- Anlik esleme: BOS + ready ayni barda ---
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
     ltfBullReady := false
+    pendHH := false
     boxL = time[bar_index - mjLLInd]
     box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
     label.new(int((boxL + time) / 2), mjHHVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_down, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+else if mjHH and bosBoxEnableInput and supportedTF and hasRealLTF
+    // BOS oldu ama ready yok — pending olarak sakla
+    pendHH := true
+    pendHHBar := bar_index
+    pendHHVal := mjHHVal
+    pendHHInd := mjHHInd
+    pendHH_LLVal := mjLLVal
+    pendHH_LLInd := mjLLInd
+    pendHH_time := time
 
 if mjLL and ltfBearReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
     ltfBearReady := false
+    pendLL := false
     boxL = time[bar_index - mjHHInd]
     box.new(boxL, mjHHVal, time, mjLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
     label.new(int((boxL + time) / 2), mjLLVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_up, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+else if mjLL and bosBoxEnableInput and supportedTF and hasRealLTF
+    // BOS oldu ama ready yok — pending olarak sakla
+    pendLL := true
+    pendLLBar := bar_index
+    pendLLVal := mjLLVal
+    pendLLInd := mjLLInd
+    pendLL_HHVal := mjHHVal
+    pendLL_HHInd := mjHHInd
+    pendLL_time := time
+
+// --- Gecikmeli esleme: ready yeni aktif oldu, pending BOS 5 bar icinde ---
+if pendHH and not mjHH and ltfBullReady and bar_index - pendHHBar <= 5 and bosBoxEnableInput and supportedTF and hasRealLTF
+    qualityBOSCount += 1
+    qualityBOSDetected := true
+    ltfBullReady := false
+    pendHH := false
+    boxL = time[bar_index - pendHH_LLInd]
+    box.new(boxL, pendHHVal, pendHH_time, pendHH_LLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
+    label.new(int((boxL + pendHH_time) / 2), pendHHVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_down, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+
+if pendLL and not mjLL and ltfBearReady and bar_index - pendLLBar <= 5 and bosBoxEnableInput and supportedTF and hasRealLTF
+    qualityBOSCount += 1
+    qualityBOSDetected := true
+    ltfBearReady := false
+    pendLL := false
+    boxL = time[bar_index - pendLL_HHInd]
+    box.new(boxL, pendLL_HHVal, pendLL_time, pendLLVal, xloc = xloc.bar_time, bgcolor = bosBoxFillInput, border_color = bosBoxBorderInput, border_width = 1)
+    label.new(int((boxL + pendLL_time) / 2), pendLLVal, str.tostring(qualityBOSCount) + " BOS", xloc = xloc.bar_time, style = label.style_label_up, color = color.new(color.white, 100), textcolor = bosBoxBorderInput, size = size.tiny)
+
+// Pending timeout (5 bar icinde eslesmediyse iptal)
+if pendHH and bar_index - pendHHBar > 5
+    pendHH := false
+if pendLL and bar_index - pendLLBar > 5
+    pendLL := false
 
 // => Alerts
 alertcondition(strBearish, "New H")
@@ -958,5 +1019,6 @@ if bosDashEnableInput
         debugBear = "S:" + str.tostring(not na(ltfBearCnt) ? ltfBearCnt : 0)
         debugPrec = (ltfBullPrecursor ? "BP" : "-") + " " + (ltfBearPrecursor ? "SP" : "-")
         debugReady = (ltfBullReady ? "BR" : "-") + " " + (ltfBearReady ? "SR" : "-")
+        debugPend = (pendHH ? "pH" : "-") + (pendLL ? "pL" : "-")
         table.cell(dash, 0, 4, "DEBUG LTF",   text_color = color.orange,   text_size = size.tiny, bgcolor = color.new(#444444, 0))
-        table.cell(dash, 1, 4, debugBull + " " + debugBear + " | " + debugPrec + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
+        table.cell(dash, 1, 4, debugBull + " " + debugBear + " | " + debugPrec + " | " + debugReady + " " + debugPend, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
