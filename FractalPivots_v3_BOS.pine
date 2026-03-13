@@ -202,7 +202,7 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v42)
+// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v43)
 // 1M major MSS tespiti: Bull MSS ve Bear MSS ayri sayaclar
 // Donus: [bullSignalCnt, bearSignalCnt]
 f_ltfDetect() =>
@@ -376,7 +376,7 @@ supportedTF = (timeframe.period == "1S" or timeframe.period == "5S" or timeframe
 hasRealLTF = lowerTF != timeframe.period
 
 // => LTF Sinyal Alma (request.security)
-// v42: 1010.txt mantigi — iki asamali oncu sistemi (>= 0 fix)
+// v43: 1010.txt mantigi — iki asamali oncu sistemi (>= 1 orijinal, tuketim + sifirlama)
 [ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
 var int prevLtfBullCnt = 0
 var int prevLtfBearCnt = 0
@@ -404,8 +404,8 @@ if ltfBullSignal
     // Bull MSS = likidite yukari alindi (bearish kaliteli icin oncu)
     ltfBullPrecursor := true
     ltfBullPrecursorBar := bar_index
-    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 0
+    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS (farkli HTF barlarda)
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 1
         ltfBullReady := true
         ltfBullReadyBar := bar_index
         ltfBearPrecursor := false
@@ -413,8 +413,8 @@ if ltfBearSignal
     // Bear MSS = likidite asagi alindi (bullish kaliteli icin oncu)
     ltfBearPrecursor := true
     ltfBearPrecursorBar := bar_index
-    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 0
+    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS (farkli HTF barlarda)
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 1
         ltfBearReady := true
         ltfBearReadyBar := bar_index
         ltfBullPrecursor := false
@@ -886,7 +886,7 @@ if mjLong or mjShort
 if mjHH or mjLL
     rawBOSCount += 1
 
-// v42: Kaliteli BOS = devam BOS + LTF likidite onayi (1010.txt mantigi)
+// v43: Kaliteli BOS = devam BOS + LTF likidite onayi (1010.txt mantigi)
 // Ready bayragi kullanildiktan sonra tuketilir (consumption)
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
