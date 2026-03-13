@@ -202,7 +202,7 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu — ANA INDIKATÖR MANTIGI (v37)
+// => LTF Likidite Tespit Fonksiyonu — ANA INDIKATÖR MANTIGI (v37/v38)
 // 1M'de AYNI minor + major yapi tespiti calisir
 // Bu sayede 1M major kirilimlar (MSS) tam olarak eslestir
 f_ltfDetect() =>
@@ -491,27 +491,42 @@ if not na(ltfBullCnt)
 if not na(ltfBearCnt)
     prevLtfBearCnt := ltfBearCnt
 
-// v35: LTF sinyal bayraklari — tek adim: MSS = kaliteli hazir
-// 1M majör yapisinda MSS = likidite alip kirilim yapmis demek (tek olay iki anlam tasiyor)
-// Ornek: 1M Short→Long MSS = fiyat swing low altina girdi (likidite) + swing high uzerine cikti (kirilim)
+// v38: Iki asamali kalite bayragi — likidite oncusu + MSS (1010.txt mantigi + ayni-bar fix)
+// Kaliteli BOS icin 1M'de: once likidite alinir (ters yone MSS), sonra kirilim gelir (geri MSS)
+// Ornek bearish kaliteli: once Bull MSS (likidite yukari), sonra Bear MSS (kirilim asagi)
 var bool ltfBullReady = false
 var bool ltfBearReady = false
 var int ltfBullReadyBar = 0
 var int ltfBearReadyBar = 0
 
-// Her MSS dogrudan kaliteli hazir bayragi acar
+var bool ltfBullPrecursor = false  // Bull MSS oldu (bearish kaliteli icin likidite oncusu)
+var bool ltfBearPrecursor = false  // Bear MSS oldu (bullish kaliteli icin likidite oncusu)
+var int ltfBullPrecursorBar = 0
+var int ltfBearPrecursorBar = 0
+
 if ltfBullSignal
-    ltfBullReady := true
-    ltfBullReadyBar := bar_index
+    // Bull MSS = 1M yukari kirilim (bearish kaliteli icin oncu = likidite yukari)
+    ltfBullPrecursor := true
+    ltfBullPrecursorBar := bar_index
+    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
+    // >= 0: ayni 5M bar icinde de gecerli (1M-5M seviye cakismasi fix)
+    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 0
+        ltfBullReady := true
+        ltfBullReadyBar := bar_index
 if ltfBearSignal
-    ltfBearReady := true
-    ltfBearReadyBar := bar_index
-// Zaman asimi — 15 HTF bar (~75 dk @ 5M)
-// Kisa timeout: kalite bayragi MSS'den sonra 15 bar icinde gecerli
-// Yeni MSS zamanlayiciyi yeniler — aktif piyasalarda bayrak sureklicacik kalir
-if ltfBullReady and bar_index - ltfBullReadyBar > 15
+    // Bear MSS = 1M asagi kirilim (bullish kaliteli icin oncu = likidite asagi)
+    ltfBearPrecursor := true
+    ltfBearPrecursorBar := bar_index
+    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
+    // >= 0: ayni 5M bar icinde de gecerli (1M-5M seviye cakismasi fix)
+    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 0
+        ltfBearReady := true
+        ltfBearReadyBar := bar_index
+// Zaman asimi — 50 HTF bar (~250 dk @ 5M)
+// Uzun sureli hareketlerde 1M MSS ile 5M BOS arasi cok fark olabiliyor
+if ltfBullReady and bar_index - ltfBullReadyBar > 50
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 15
+if ltfBearReady and bar_index - ltfBearReadyBar > 50
     ltfBearReady := false
 
 // BOS Sayaclari
@@ -962,22 +977,23 @@ if mjDir == "Long"
 // Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
 qualityBOSDetected = false
 
-// MSS: Trend donusu — sayaclari ve LTF bayraklari sifirla
+// MSS: Trend donusu — sayaclari, LTF bayraklari VE oncuculari sifirla
 // Kaliteli BOS icin MSS SONRASI taze LTF sinyali gerekli
 if mjLong or mjShort
-    rawBOSCount     := 0
-    qualityBOSCount := 0
-    ltfBullReady    := false
-    ltfBearReady    := false
+    rawBOSCount      := 0
+    qualityBOSCount  := 0
+    ltfBullReady     := false
+    ltfBearReady     := false
+    ltfBullPrecursor := false
+    ltfBearPrecursor := false
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
     rawBOSCount += 1
 
-// Kaliteli BOS: Devam BOS + LTF likidite onayi
-// v36: Ready bayragi TUKETILMIYOR — ayni MSS birden fazla BOS'u kaliteli yapabilir
-// Bayrak sadece timeout (15 bar) veya trend degisiminde sifirlanir
-// Yeni LTF MSS zamanlayiciyi yeniler → aktif piyasada bayrak acik kalir
+// Kaliteli BOS: Devam BOS + LTF iki-asamali onay (likidite + MSS)
+// v38: Ready bayragi TUKETILMIYOR — ayni MSS birden fazla BOS'u kaliteli yapabilir
+// Bayrak sadece timeout (50 bar) veya trend degisiminde sifirlanir
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
@@ -1044,6 +1060,7 @@ if bosDashEnableInput
         // Satir 4: Debug — LTF sinyal durumlari
         debugBull = str.tostring(not na(ltfBullCnt) ? ltfBullCnt : 0)
         debugBear = str.tostring(not na(ltfBearCnt) ? ltfBearCnt : 0)
+        debugPrec = (ltfBullPrecursor ? "BP" : "-") + " " + (ltfBearPrecursor ? "SP" : "-")
         debugReady = (ltfBullReady ? "BR" : "-") + " " + (ltfBearReady ? "SR" : "-")
         table.cell(dash, 0, 4, "DEBUG LTF",   text_color = color.orange,   text_size = size.tiny, bgcolor = color.new(#444444, 0))
-        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
+        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugPrec + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
