@@ -202,9 +202,9 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v40)
-// 1010.txt bazli basit major yapi: fractal pivotlardan swing high/low al,
-// 10 bar cooldown ile MSS tespit et
+// => LTF Likidite Tespit Fonksiyonu — fracH/fracL + cooldown (v41)
+// 1M major yon tespiti: mDir = "Long" veya "Short"
+// Donus: [yon (1=Long, -1=Short, 0=belirsiz), toplam MSS sayisi]
 f_ltfDetect() =>
     // --- MINOR STRUCTURE (ana indikatörle ayni) ---
     var string ltfCond = ""
@@ -351,14 +351,12 @@ f_ltfDetect() =>
             if not na(fracL)
                 mLL := fracL
             mLBr := false
-    // MSS sinyallerini say
-    var int bullSignalCnt = 0
-    var int bearSignalCnt = 0
-    if mBullMSS
-        bullSignalCnt += 1
-    if mBearMSS
-        bearSignalCnt += 1
-    [bullSignalCnt, bearSignalCnt]
+    // Yon ve toplam MSS sayisi dondur
+    dirVal = mDir == "Long" ? 1 : mDir == "Short" ? -1 : 0
+    var int totalMSS = 0
+    if mBullMSS or mBearMSS
+        totalMSS += 1
+    [dirVal, totalMSS]
 
 // => LTF Zaman Dilimi Eslestirmesi
 lowerTF = switch timeframe.period
@@ -376,50 +374,24 @@ supportedTF = (timeframe.period == "1S" or timeframe.period == "5S" or timeframe
 hasRealLTF = lowerTF != timeframe.period
 
 // => LTF Sinyal Alma (request.security)
-[ltfBullCnt, ltfBearCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
-var int prevLtfBullCnt = 0
-var int prevLtfBearCnt = 0
-ltfBullSignal = supportedTF and not na(ltfBullCnt) and ltfBullCnt > prevLtfBullCnt
-ltfBearSignal = supportedTF and not na(ltfBearCnt) and ltfBearCnt > prevLtfBearCnt
-if not na(ltfBullCnt)
-    prevLtfBullCnt := ltfBullCnt
-if not na(ltfBearCnt)
-    prevLtfBearCnt := ltfBearCnt
+// v41: Yon bazli kalite — 1M major yonu 5M BOS yonu ile eslesirse kaliteli
+[ltfDir, ltfMSSCnt] = request.security(syminfo.tickerid, lowerTF, f_ltfDetect())
+var int prevLtfMSSCnt = 0
+var int ltfMSSBar = 0
 
-// v39: Iki asamali kalite bayragi — oncucu tuketimli + karsilikli ozel bayraklar
-// Kaliteli BOS icin 1M'de: once likidite alinir (ters yone MSS), sonra kirilim gelir (geri MSS)
-// Ornek bearish kaliteli: once Bull MSS (likidite yukari), sonra Bear MSS (kirilim asagi)
-var bool ltfBullReady = false
-var bool ltfBearReady = false
-var int ltfBullReadyBar = 0
-var int ltfBearReadyBar = 0
+// Yeni MSS oldu mu? (toplam sayac arttiysa)
+ltfMSSHappened = supportedTF and not na(ltfMSSCnt) and ltfMSSCnt > prevLtfMSSCnt
+if not na(ltfMSSCnt)
+    prevLtfMSSCnt := ltfMSSCnt
+if ltfMSSHappened
+    ltfMSSBar := bar_index
 
-var bool ltfBullPrecursor = false  // Bull MSS oldu (bearish kaliteli icin likidite oncusu)
-var bool ltfBearPrecursor = false  // Bear MSS oldu (bullish kaliteli icin likidite oncusu)
-
-if ltfBullSignal
-    // Bull MSS = 1M yukari kirilim (bearish kaliteli icin oncu = likidite yukari)
-    ltfBullPrecursor := true
-    // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    if ltfBearPrecursor
-        ltfBullReady := true
-        ltfBullReadyBar := bar_index
-        ltfBearReady := false       // karsilikli ozel: sadece 1 yon kaliteli olabilir
-        ltfBearPrecursor := false   // oncucu tuket — tekrar kullanilmasin
-if ltfBearSignal
-    // Bear MSS = 1M asagi kirilim (bullish kaliteli icin oncu = likidite asagi)
-    ltfBearPrecursor := true
-    // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    if ltfBullPrecursor
-        ltfBearReady := true
-        ltfBearReadyBar := bar_index
-        ltfBullReady := false       // karsilikli ozel: sadece 1 yon kaliteli olabilir
-        ltfBullPrecursor := false   // oncucu tuket — tekrar kullanilmasin
-// Zaman asimi — 30 HTF bar (~150 dk @ 5M)
-if ltfBullReady and bar_index - ltfBullReadyBar > 30
-    ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 30
-    ltfBearReady := false
+// Kalite bayraklari: 1M yonu + yakin zamanda MSS olmus olmali
+// ltfDir > 0 = 1M Long (bullish), ltfDir < 0 = 1M Short (bearish)
+// 30 bar timeout: MSS'den sonra 30 HTF bar icinde gecerli
+ltfRecent = bar_index - ltfMSSBar <= 30
+ltfBullReady = supportedTF and not na(ltfDir) and ltfDir > 0 and ltfRecent
+ltfBearReady = supportedTF and not na(ltfDir) and ltfDir < 0 and ltfRecent
 
 // BOS Sayaclari
 var int rawBOSCount     = 0
@@ -869,23 +841,18 @@ if mjDir == "Long"
 // Devam BOS (mjHH/mjLL) → kalite kontrolu yapilir, sayac artar
 qualityBOSDetected = false
 
-// MSS: Trend donusu — sayaclari, LTF bayraklari VE oncuculari sifirla
-// Kaliteli BOS icin MSS SONRASI taze LTF sinyali gerekli
+// MSS: Trend donusu — sayaclari sifirla
 if mjLong or mjShort
-    rawBOSCount      := 0
-    qualityBOSCount  := 0
-    ltfBullReady     := false
-    ltfBearReady     := false
-    ltfBullPrecursor := false
-    ltfBearPrecursor := false
+    rawBOSCount     := 0
+    qualityBOSCount := 0
 
 // Devam BOS'lari say (HH veya LL)
 if mjHH or mjLL
     rawBOSCount += 1
 
-// Kaliteli BOS: Devam BOS + LTF iki-asamali onay (likidite + MSS)
-// v39: Ready bayragi tuketilmiyor, ama karsilikli ozel (sadece 1 yon aktif)
-// Bayrak timeout (30 bar), trend degisimi veya karsi yon sinyalinde sifirlanir
+// v41: Kaliteli BOS = 1M major yon 5M BOS yonu ile eslesiyor
+// ltfBullReady = 1M Long yonunde + yakin MSS → 5M HH kaliteli
+// ltfBearReady = 1M Short yonunde + yakin MSS → 5M LL kaliteli
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
@@ -950,9 +917,8 @@ if bosDashEnableInput
         table.cell(dash, 0, 3, "Motor Baglantisi",   text_color = color.gray,   text_size = size.small, bgcolor = color.new(#444444, 0))
         table.cell(dash, 1, 3, "LTF: " + ltfLabel + " | HTF: " + htfLabel, text_color = color.new(#90CAF9, 0), text_size = size.small, bgcolor = color.new(#333333, 0))
         // Satir 4: Debug — LTF sinyal durumlari
-        debugBull = str.tostring(not na(ltfBullCnt) ? ltfBullCnt : 0)
-        debugBear = str.tostring(not na(ltfBearCnt) ? ltfBearCnt : 0)
-        debugPrec = (ltfBullPrecursor ? "BP" : "-") + " " + (ltfBearPrecursor ? "SP" : "-")
+        debugDir = not na(ltfDir) ? (ltfDir > 0 ? "LONG" : ltfDir < 0 ? "SHORT" : "---") : "na"
+        debugMSS = str.tostring(not na(ltfMSSCnt) ? ltfMSSCnt : 0)
         debugReady = (ltfBullReady ? "BR" : "-") + " " + (ltfBearReady ? "SR" : "-")
         table.cell(dash, 0, 4, "DEBUG LTF",   text_color = color.orange,   text_size = size.tiny, bgcolor = color.new(#444444, 0))
-        table.cell(dash, 1, 4, "B:" + debugBull + " S:" + debugBear + " | " + debugPrec + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
+        table.cell(dash, 1, 4, "1M:" + debugDir + " MSS:" + debugMSS + " | " + debugReady, text_color = color.orange, text_size = size.tiny, bgcolor = color.new(#333333, 0))
