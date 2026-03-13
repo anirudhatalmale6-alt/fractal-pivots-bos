@@ -202,7 +202,7 @@ f_zigzagmaj(_mjarr) =>
         y2                  = typecur.pivot
         typecur.lnzigzag    := line.new(x1, y1, x2, y2, xloc = xloc.bar_time,  extend = extend.none, color = mjzigzagCOLORInput, style = f_linestyle(mjzigzagSTYLEInput), width = mjzigzagWIDTHInput)
 
-// => LTF Likidite Tespit Fonksiyonu — ANA INDIKATÖR MANTIGI (v37/v38)
+// => LTF Likidite Tespit Fonksiyonu — ANA INDIKATÖR MANTIGI (v37+)
 // 1M'de AYNI minor + major yapi tespiti calisir
 // Bu sayede 1M major kirilimlar (MSS) tam olarak eslestir
 f_ltfDetect() =>
@@ -491,7 +491,7 @@ if not na(ltfBullCnt)
 if not na(ltfBearCnt)
     prevLtfBearCnt := ltfBearCnt
 
-// v38: Iki asamali kalite bayragi — likidite oncusu + MSS (1010.txt mantigi + ayni-bar fix)
+// v39: Iki asamali kalite bayragi — oncucu tuketimli + karsilikli ozel bayraklar
 // Kaliteli BOS icin 1M'de: once likidite alinir (ters yone MSS), sonra kirilim gelir (geri MSS)
 // Ornek bearish kaliteli: once Bull MSS (likidite yukari), sonra Bear MSS (kirilim asagi)
 var bool ltfBullReady = false
@@ -501,32 +501,29 @@ var int ltfBearReadyBar = 0
 
 var bool ltfBullPrecursor = false  // Bull MSS oldu (bearish kaliteli icin likidite oncusu)
 var bool ltfBearPrecursor = false  // Bear MSS oldu (bullish kaliteli icin likidite oncusu)
-var int ltfBullPrecursorBar = 0
-var int ltfBearPrecursorBar = 0
 
 if ltfBullSignal
     // Bull MSS = 1M yukari kirilim (bearish kaliteli icin oncu = likidite yukari)
     ltfBullPrecursor := true
-    ltfBullPrecursorBar := bar_index
     // Bullish kaliteli BOS icin: once Bear likidite + sonra Bull MSS
-    // >= 0: ayni 5M bar icinde de gecerli (1M-5M seviye cakismasi fix)
-    if ltfBearPrecursor and bar_index - ltfBearPrecursorBar >= 0
+    if ltfBearPrecursor
         ltfBullReady := true
         ltfBullReadyBar := bar_index
+        ltfBearReady := false       // karsilikli ozel: sadece 1 yon kaliteli olabilir
+        ltfBearPrecursor := false   // oncucu tuket — tekrar kullanilmasin
 if ltfBearSignal
     // Bear MSS = 1M asagi kirilim (bullish kaliteli icin oncu = likidite asagi)
     ltfBearPrecursor := true
-    ltfBearPrecursorBar := bar_index
     // Bearish kaliteli BOS icin: once Bull likidite + sonra Bear MSS
-    // >= 0: ayni 5M bar icinde de gecerli (1M-5M seviye cakismasi fix)
-    if ltfBullPrecursor and bar_index - ltfBullPrecursorBar >= 0
+    if ltfBullPrecursor
         ltfBearReady := true
         ltfBearReadyBar := bar_index
-// Zaman asimi — 50 HTF bar (~250 dk @ 5M)
-// Uzun sureli hareketlerde 1M MSS ile 5M BOS arasi cok fark olabiliyor
-if ltfBullReady and bar_index - ltfBullReadyBar > 50
+        ltfBullReady := false       // karsilikli ozel: sadece 1 yon kaliteli olabilir
+        ltfBullPrecursor := false   // oncucu tuket — tekrar kullanilmasin
+// Zaman asimi — 30 HTF bar (~150 dk @ 5M)
+if ltfBullReady and bar_index - ltfBullReadyBar > 30
     ltfBullReady := false
-if ltfBearReady and bar_index - ltfBearReadyBar > 50
+if ltfBearReady and bar_index - ltfBearReadyBar > 30
     ltfBearReady := false
 
 // BOS Sayaclari
@@ -992,8 +989,8 @@ if mjHH or mjLL
     rawBOSCount += 1
 
 // Kaliteli BOS: Devam BOS + LTF iki-asamali onay (likidite + MSS)
-// v38: Ready bayragi TUKETILMIYOR — ayni MSS birden fazla BOS'u kaliteli yapabilir
-// Bayrak sadece timeout (50 bar) veya trend degisiminde sifirlanir
+// v39: Ready bayragi tuketilmiyor, ama karsilikli ozel (sadece 1 yon aktif)
+// Bayrak timeout (30 bar), trend degisimi veya karsi yon sinyalinde sifirlanir
 if mjHH and ltfBullReady and bosBoxEnableInput and supportedTF and hasRealLTF
     qualityBOSCount += 1
     qualityBOSDetected := true
